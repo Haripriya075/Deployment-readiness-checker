@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>DeployCheck | Deployment Readiness Analyzer</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <header class="navbar">
+
+        <div class="logo">
+            DeployCheck
+        </div>
+
+        <div class="nav-text">
+            Deployment Readiness Analyzer
+        </div>
+
+    </header>
+
+
+    <!-- MAIN -->
+
+    <main class="container">
+
+        <!-- HERO -->
+
+        <section class="hero">
+
+            <div class="hero-content">
+
+                <span class="badge">
+                    DEVELOPER TOOL
+                </span>
+
+                <h1>
+                    Know what could
+                    <span>break before you deploy.</span>
+                </h1>
+
+                <p>
+                    Upload your project and analyze its
+                    deployment readiness, configuration,
+                    dependencies, testing, and security risks.
+                </p>
+
+                <div class="hero-points">
+
+                    <span>✓ Project Analysis</span>
+
+                    <span>✓ Security Checks</span>
+
+                    <span>✓ Deployment Score</span>
+
+                </div>
+
+            </div>
+
+
+            <!-- UPLOAD -->
+
+            <div class="upload-card">
+
+                <div class="upload-icon">
+                    ↑
+                </div>
+
+                <h2>
+                    Scan Your Project
+                </h2>
+
+                <p>
+                    Upload your project as a ZIP file
+                    to begin the analysis.
+                </p>
+
+
+                <label
+                    for="projectFile"
+                    class="file-label"
+                >
+                    Choose ZIP File
+                </label>
+
+
+                <input
+                    type="file"
+                    id="projectFile"
+                    accept=".zip"
+                >
+
+
+                <div
+                    id="fileName"
+                    class="file-name"
+                >
+                    No file selected
+                </div>
+
+
+                <button
+                    id="scanBtn"
+                    class="scan-btn"
+                >
+                    Scan Project
+                </button>
+
+
+                <div
+                    id="message"
+                    class="message"
+                ></div>
+
+            </div>
+
+        </section>
+
+
+        <!-- WHAT WE CHECK -->
+
+        <section class="checks">
+
+            <div class="section-title">
+
+                <span class="section-label">
+                    ANALYSIS
+                </span>
+
+                <h2>
+                    What DeployCheck looks for
+                </h2>
+
+                <p>
+                    Identify common problems before your
+                    project reaches production.
+                </p>
+
+            </div>
+
+
+            <div class="check-grid">
+
+                <div class="check-card">
+
+                    <div class="check-icon">
+                        ✓
+                    </div>
+
+                    <h3>
+                        Project Structure
+                    </h3>
+
+                    <p>
+                        Check whether important project
+                        files and folders are present.
+                    </p>
+
+                </div>
+
+
+                <div class="check-card">
+
+                    <div class="check-icon">
+                        ◇
+                    </div>
+
+                    <h3>
+                        Dependencies
+                    </h3>
+
+                    <p>
+                        Detect dependency and package
+                        configuration issues.
+                    </p>
+
+                </div>
+
+
+                <div class="check-card">
+
+                    <div class="check-icon">
+                        !
+                    </div>
+
+                    <h3>
+                        Security
+                    </h3>
+
+                    <p>
+                        Look for potentially exposed
+                        secrets and credentials.
+                    </p>
+
+                </div>
+
+
+                <div class="check-card">
+
+                    <div class="check-icon">
+                        ⚙
+                    </div>
+
+                    <h3>
+                        Configuration
+                    </h3>
+
+                    <p>
+                        Review environment and deployment
+                        configuration.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- REPORT WILL BE INSERTED HERE -->
+
+    </main>
+
+
+    <script
+        src="{{ url_for('static', filename='script.js') }}"
+    ></script>
+
+</body>
+
+</html>
