@@ -1,0 +1,5 @@
+uploads/
+scanned_projects/
+__pycache__/
+.venv/
+*.pyc
