@@ -18,6 +18,8 @@ A Flask-based web application that checks whether a project is ready for deploym
 <img width="1321" height="611" alt="image" src="https://github.com/user-attachments/assets/f71b1e48-307c-42a7-83bf-75820a3b18a7" />
 
 
+<img width="1316" height="552" alt="image" src="https://github.com/user-attachments/assets/5695676c-78e0-4212-83ea-559a7f7f7ee9" />
+
 ## Technologies Used
 
 * Python
@@ -53,7 +55,7 @@ Deployment-readiness-checker/
 5. It identifies potential issues.
 6. The results are displayed on the web interface.
 
-<img width="1316" height="552" alt="image" src="https://github.com/user-attachments/assets/5695676c-78e0-4212-83ea-559a7f7f7ee9" />
+
 
 
 ## Installation
