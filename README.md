@@ -2,6 +2,9 @@
 
 A Flask-based web application that checks whether a project is ready for deployment. Users can upload a project ZIP file, and the application scans its structure and files to identify common deployment-related issues.
 
+<img width="1346" height="630" alt="image" src="https://github.com/user-attachments/assets/76e5355e-0364-4e64-acdf-1d1501665fc3" />
+
+
 ## Features
 
 * Upload a project as a ZIP file
@@ -11,6 +14,9 @@ A Flask-based web application that checks whether a project is ready for deploym
 * Identify common deployment issues
 * Provide deployment-readiness results
 * Simple and user-friendly interface
+
+<img width="1321" height="611" alt="image" src="https://github.com/user-attachments/assets/f71b1e48-307c-42a7-83bf-75820a3b18a7" />
+
 
 ## Technologies Used
 
@@ -46,6 +52,9 @@ Deployment-readiness-checker/
 4. It checks important deployment requirements.
 5. It identifies potential issues.
 6. The results are displayed on the web interface.
+
+<img width="1316" height="552" alt="image" src="https://github.com/user-attachments/assets/5695676c-78e0-4212-83ea-559a7f7f7ee9" />
+
 
 ## Installation
 
