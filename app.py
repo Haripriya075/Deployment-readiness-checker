@@ -5,13 +5,17 @@ import shutil
 import re
 import json
 
+
 app = Flask(__name__)
+
 
 UPLOAD_FOLDER = "uploads"
 EXTRACT_FOLDER = "scanned_projects"
 
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(EXTRACT_FOLDER, exist_ok=True)
+
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -22,6 +26,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.route("/")
 def home():
+
     return render_template("index.html")
 
 
@@ -33,9 +38,9 @@ def detect_technology(project_path):
 
     all_files = []
 
+
     for root, dirs, filenames in os.walk(project_path):
 
-        # Ignore unnecessary folders
         dirs[:] = [
             d for d in dirs
             if d not in {
@@ -47,7 +52,9 @@ def detect_technology(project_path):
             }
         ]
 
+
         for filename in filenames:
+
             relative_path = os.path.relpath(
                 os.path.join(root, filename),
                 project_path
@@ -55,55 +62,68 @@ def detect_technology(project_path):
 
             all_files.append(relative_path)
 
+
     file_names = {
         os.path.basename(file).lower()
         for file in all_files
     }
+
 
     extensions = {
         os.path.splitext(file)[1].lower()
         for file in all_files
     }
 
+
     technologies = []
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # PYTHON
-    # --------------------------------------------------------
+    # ========================================================
 
     requirements = any(
-        os.path.basename(file).lower() == "requirements.txt"
+        os.path.basename(file).lower()
+        == "requirements.txt"
         for file in all_files
     )
 
+
     pyproject = any(
-        os.path.basename(file).lower() == "pyproject.toml"
+        os.path.basename(file).lower()
+        == "pyproject.toml"
         for file in all_files
     )
+
 
     python_files = ".py" in extensions
 
+
     if requirements or pyproject or python_files:
 
-        # Django
         manage_py = "manage.py" in file_names
 
+
         if manage_py:
+
             technologies.append("Django")
 
         else:
 
             flask_found = False
 
+
             for relative_file in all_files:
 
-                if not relative_file.endswith(".py"):
+                if not relative_file.lower().endswith(".py"):
                     continue
+
 
                 full_path = os.path.join(
                     project_path,
                     relative_file
                 )
+
 
                 try:
 
@@ -116,6 +136,7 @@ def detect_technology(project_path):
 
                         content = f.read().lower()
 
+
                     if (
                         "from flask import" in content
                         or "import flask" in content
@@ -123,36 +144,46 @@ def detect_technology(project_path):
                     ):
 
                         flask_found = True
+
                         break
 
+
                 except Exception:
+
                     continue
 
+
             if flask_found:
+
                 technologies.append("Python / Flask")
 
             else:
+
                 technologies.append("Python")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # NODE.JS / JAVASCRIPT
-    # --------------------------------------------------------
+    # ========================================================
 
     package_files = [
         file
         for file in all_files
-        if os.path.basename(file).lower() == "package.json"
+        if os.path.basename(file).lower()
+        == "package.json"
     ]
+
 
     if package_files:
 
         technologies.append("Node.js")
 
+
         package_path = os.path.join(
             project_path,
             package_files[0]
         )
+
 
         try:
 
@@ -164,7 +195,9 @@ def detect_technology(project_path):
 
                 package_data = json.load(f)
 
+
             dependencies = {}
+
 
             dependencies.update(
                 package_data.get(
@@ -173,6 +206,7 @@ def detect_technology(project_path):
                 )
             )
 
+
             dependencies.update(
                 package_data.get(
                     "devDependencies",
@@ -180,107 +214,133 @@ def detect_technology(project_path):
                 )
             )
 
+
             dependency_names = {
                 name.lower()
                 for name in dependencies.keys()
             }
 
+
             if "react" in dependency_names:
                 technologies.append("React")
+
 
             if "next" in dependency_names:
                 technologies.append("Next.js")
 
+
             if "vue" in dependency_names:
                 technologies.append("Vue.js")
+
 
             if "@angular/core" in dependency_names:
                 technologies.append("Angular")
 
+
             if "express" in dependency_names:
                 technologies.append("Express.js")
+
 
             if "vite" in dependency_names:
                 technologies.append("Vite")
 
+
             if "typescript" in dependency_names:
                 technologies.append("TypeScript")
 
+
         except Exception:
+
             pass
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # JAVA
-    # --------------------------------------------------------
+    # ========================================================
 
     if "pom.xml" in file_names:
+
         technologies.append("Java / Maven")
 
+
     elif "build.gradle" in file_names:
+
         technologies.append("Java / Gradle")
 
+
     elif ".java" in extensions:
+
         technologies.append("Java")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # DOCKER
-    # --------------------------------------------------------
+    # ========================================================
 
     if "dockerfile" in file_names:
+
         technologies.append("Docker")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # HTML
-    # --------------------------------------------------------
+    # ========================================================
 
     if ".html" in extensions:
+
         technologies.append("HTML")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # CSS
-    # --------------------------------------------------------
+    # ========================================================
 
     if ".css" in extensions:
+
         technologies.append("CSS")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # JAVASCRIPT
-    # --------------------------------------------------------
+    # ========================================================
 
-    if ".js" in extensions and "Node.js" not in technologies:
+    if (
+        ".js" in extensions
+        and "Node.js" not in technologies
+    ):
+
         technologies.append("JavaScript")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # TYPESCRIPT
-    # --------------------------------------------------------
+    # ========================================================
 
-    if ".ts" in extensions and "TypeScript" not in technologies:
+    if (
+        ".ts" in extensions
+        and "TypeScript" not in technologies
+    ):
+
         technologies.append("TypeScript")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # GIT
-    # --------------------------------------------------------
+    # ========================================================
 
     if ".gitignore" in file_names:
+
         technologies.append("Git")
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # UNKNOWN
-    # --------------------------------------------------------
+    # ========================================================
 
     if not technologies:
+
         technologies.append("Unknown")
 
-
-    # Remove duplicates while preserving order
 
     return list(
         dict.fromkeys(technologies)
@@ -317,6 +377,7 @@ def scan_project(project_path):
             }
         ]
 
+
         for file in files:
 
             full_path = os.path.join(
@@ -324,10 +385,12 @@ def scan_project(project_path):
                 file
             )
 
+
             relative_path = os.path.relpath(
                 full_path,
                 project_path
             )
+
 
             all_files.append(relative_path)
 
@@ -362,9 +425,11 @@ def scan_project(project_path):
             "details": []
         })
 
+
     else:
 
         score -= 10
+
 
         results.append({
             "name": "README Documentation",
@@ -403,9 +468,11 @@ def scan_project(project_path):
             "details": []
         })
 
+
     else:
 
         score -= 15
+
 
         results.append({
             "name": "Dependencies",
@@ -442,9 +509,11 @@ def scan_project(project_path):
             "details": []
         })
 
+
     elif env_found:
 
         score -= 5
+
 
         results.append({
             "name": "Environment Configuration",
@@ -452,6 +521,7 @@ def scan_project(project_path):
             "message": ".env file exists. Make sure it is not committed publicly.",
             "details": []
         })
+
 
     else:
 
@@ -485,7 +555,6 @@ def scan_project(project_path):
         r"aws_access_key_id\s*[:=]\s*['\"][^'\"]+['\"]",
 
         r"private[_-]?key\s*[:=]\s*['\"][^'\"]+['\"]"
-
     ]
 
 
@@ -542,13 +611,10 @@ def scan_project(project_path):
                 start=1
             ):
 
-                line_lower = line.lower()
-
-
-                # Ignore comments
                 if line.strip().startswith(
                     ("#", "//")
                 ):
+
                     continue
 
 
@@ -563,12 +629,16 @@ def scan_project(project_path):
 
                     if match:
 
-                        matched_text = match.group(0).lower()
+                        matched_text = (
+                            match.group(0).lower()
+                        )
+
 
                         if any(
                             word in matched_text
                             for word in ignored_words
                         ):
+
                             continue
 
 
@@ -579,7 +649,10 @@ def scan_project(project_path):
                             "file": relative_file,
                             "line": line_number,
                             "code": line.strip(),
-                            "fix": "Move credentials to environment variables or a secure secret manager."
+                            "fix": (
+                                "Move credentials to environment "
+                                "variables or a secure secret manager."
+                            )
                         })
 
 
@@ -595,12 +668,14 @@ def scan_project(project_path):
 
         score -= 25
 
+
         results.append({
             "name": "Security",
             "status": "critical",
             "message": "Possible hardcoded secret or credential detected.",
             "details": secret_details
         })
+
 
     else:
 
@@ -626,6 +701,7 @@ def scan_project(project_path):
         if not relative_file.lower().endswith(
             (".py", ".js", ".ts")
         ):
+
             continue
 
 
@@ -660,11 +736,15 @@ def scan_project(project_path):
 
                     debug_found = True
 
+
                     debug_details.append({
                         "file": relative_file,
                         "line": line_number,
                         "code": line.strip(),
-                        "fix": "Disable debug mode before production deployment."
+                        "fix": (
+                            "Disable debug mode before "
+                            "production deployment."
+                        )
                     })
 
 
@@ -677,12 +757,14 @@ def scan_project(project_path):
 
         score -= 10
 
+
         results.append({
             "name": "Debug Configuration",
             "status": "warning",
             "message": "Debug mode appears to be enabled.",
             "details": debug_details
         })
+
 
     else:
 
@@ -720,9 +802,11 @@ def scan_project(project_path):
             "details": []
         })
 
+
     else:
 
         score -= 10
+
 
         results.append({
             "name": "Testing",
@@ -774,7 +858,9 @@ def scan_project(project_path):
     results.append({
         "name": "Project Type",
         "status": "pass",
-        "message": f"Detected project type: {project_type}",
+        "message": (
+            f"Detected project type: {project_type}"
+        ),
         "details": []
     })
 
@@ -791,8 +877,10 @@ def scan_project(project_path):
     results.append({
         "name": "Technology Stack",
         "status": "pass",
-        "message": "Detected technologies: "
-                   + ", ".join(technologies),
+        "message": (
+            "Detected technologies: "
+            + ", ".join(technologies)
+        ),
         "details": []
     })
 
@@ -876,9 +964,9 @@ def upload_project():
         })
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAFE FILENAME
-    # --------------------------------------------------------
+    # ========================================================
 
     safe_filename = os.path.basename(
         file.filename
@@ -905,9 +993,9 @@ def upload_project():
     )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # REMOVE PREVIOUS SCAN
-    # --------------------------------------------------------
+    # ========================================================
 
     if os.path.exists(extract_path):
 
@@ -922,9 +1010,9 @@ def upload_project():
     )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAFE ZIP EXTRACTION
-    # --------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -936,6 +1024,7 @@ def upload_project():
             base_path = os.path.abspath(
                 extract_path
             )
+
 
             for member in zip_ref.infolist():
 
@@ -977,7 +1066,9 @@ def upload_project():
 
         return jsonify({
             "success": False,
-            "message": f"Could not extract ZIP file: {error}"
+            "message": (
+                f"Could not extract ZIP file: {error}"
+            )
         })
 
 
@@ -991,11 +1082,14 @@ def upload_project():
             extract_path
         )
 
+
     except Exception as error:
 
         return jsonify({
             "success": False,
-            "message": f"Project scanning failed: {error}"
+            "message": (
+                f"Project scanning failed: {error}"
+            )
         })
 
 
@@ -1019,7 +1113,9 @@ def upload_project():
 # ============================================================
 
 if __name__ == "__main__":
-
     app.run(
-        debug=True
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
     )
+    
