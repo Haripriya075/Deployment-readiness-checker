@@ -1,639 +1,257 @@
-document.addEventListener("DOMContentLoaded", function () {
+function displayReport(data) {
 
-    /* =====================================================
-       GET ELEMENTS
-    ===================================================== */
-
-    var fileInput = document.getElementById("projectFile");
-    var fileName = document.getElementById("fileName");
-    var scanBtn = document.getElementById("scanBtn");
-    var message = document.getElementById("message");
-    var uploadZone = document.getElementById("uploadZone");
-    var reportSection = document.getElementById("reportSection");
-    var report = document.getElementById("report");
-
-
-    /* =====================================================
-       CHECK ELEMENTS
-    ===================================================== */
-
-    if (!fileInput || !fileName || !scanBtn || !message) {
-        console.error("DeployCheck: Required HTML elements are missing.");
+    if (!reportSection || !report) {
+        console.error("Report elements are missing.");
         return;
     }
 
+    if (!data.success) {
+        message.textContent =
+            data.message || "Project analysis failed.";
 
-    /* =====================================================
-       FILE SELECTION
-    ===================================================== */
+        message.style.color = "#d64545";
+        return;
+    }
 
-    fileInput.addEventListener("change", function () {
+    var reportData = data.report || {};
 
-        if (fileInput.files.length === 0) {
-            fileName.textContent = "No project selected";
-            return;
-        }
+    reportSection.classList.remove("hidden");
 
-        var file = fileInput.files[0];
 
-        if (!file.name.toLowerCase().endsWith(".zip")) {
+    /* =================================================
+       SCORE
+    ================================================= */
 
-            fileName.textContent = "No project selected";
+    var score = Number(reportData.score);
 
-            message.textContent = "Please upload a ZIP file.";
-            message.style.color = "#d64545";
+    if (isNaN(score)) {
+        score = 0;
+    }
 
-            fileInput.value = "";
+    score = Math.max(
+        0,
+        Math.min(100, score)
+    );
 
-            return;
-        }
 
-        fileName.textContent = file.name;
+    /* =================================================
+       PROJECT TYPE
+    ================================================= */
 
-        message.textContent = "";
-        message.className = "message";
+    var projectType = "Unknown";
+
+    var results = Array.isArray(reportData.results)
+        ? reportData.results
+        : [];
+
+    var projectTypeResult = results.find(function (item) {
+        return item.name === "Project Type";
     });
 
+    if (projectTypeResult) {
 
-    /* =====================================================
-       DRAG AND DROP
-    ===================================================== */
+        var match =
+            projectTypeResult.message.match(
+                /Detected project type:\s*(.+)/i
+            );
 
-    if (uploadZone) {
-
-        uploadZone.addEventListener("dragover", function (event) {
-
-            event.preventDefault();
-
-            uploadZone.classList.add("dragging");
-
-        });
-
-
-        uploadZone.addEventListener("dragleave", function () {
-
-            uploadZone.classList.remove("dragging");
-
-        });
-
-
-        uploadZone.addEventListener("drop", function (event) {
-
-            event.preventDefault();
-
-            uploadZone.classList.remove("dragging");
-
-            var files = event.dataTransfer.files;
-
-            if (!files || files.length === 0) {
-                return;
-            }
-
-            var droppedFile = files[0];
-
-            if (!droppedFile.name.toLowerCase().endsWith(".zip")) {
-
-                message.textContent =
-                    "Please upload a ZIP file.";
-
-                message.style.color = "#d64545";
-
-                return;
-            }
-
-            try {
-
-                var dataTransfer = new DataTransfer();
-
-                dataTransfer.items.add(droppedFile);
-
-                fileInput.files = dataTransfer.files;
-
-                fileName.textContent = droppedFile.name;
-
-                message.textContent = "";
-                message.className = "message";
-
-            } catch (error) {
-
-                console.error(
-                    "Could not process dropped file:",
-                    error
-                );
-
-                message.textContent =
-                    "Please select the ZIP file using the button.";
-
-                message.style.color = "#d64545";
-            }
-
-        });
-
+        if (match) {
+            projectType = match[1];
+        }
     }
 
 
-    /* =====================================================
-       SCAN BUTTON
-    ===================================================== */
+    /* =================================================
+       SCORE MESSAGE
+    ================================================= */
 
-    scanBtn.addEventListener("click", function () {
+    var scoreMessage;
 
-        if (fileInput.files.length === 0) {
+    if (score >= 80) {
 
-            message.textContent =
-                "Please select a ZIP file first.";
+        scoreMessage =
+            "Ready for deployment";
 
-            message.style.color = "#d64545";
+    } else if (score >= 60) {
 
-            return;
-        }
+        scoreMessage =
+            "Needs some improvements";
+
+    } else {
+
+        scoreMessage =
+            "Deployment risks detected";
+    }
 
 
-        var selectedFile = fileInput.files[0];
+    /* =================================================
+       BUILD REPORT
+    ================================================= */
+
+    var html = "";
 
 
-        /* -------------------------------------------------
-           FILE TYPE CHECK
-        ------------------------------------------------- */
+    html +=
+        '<div class="report-score">' +
+        score +
+        '%' +
+        '</div>';
+
+
+    html +=
+        '<div class="report-title">' +
+        escapeHtml(scoreMessage) +
+        '</div>';
+
+
+    html +=
+        '<div class="report-item">' +
+        '<span>Project Type</span>' +
+        '<span class="report-status">' +
+        escapeHtml(projectType) +
+        '</span>' +
+        '</div>';
+
+
+    /* =================================================
+       BACKEND RESULTS
+    ================================================= */
+
+    results.forEach(function (result) {
+
+        var statusClass =
+            result.status || "pass";
+
+        var detailsHtml = "";
+
 
         if (
-            !selectedFile.name
-                .toLowerCase()
-                .endsWith(".zip")
+            result.details &&
+            Array.isArray(result.details) &&
+            result.details.length > 0
         ) {
 
-            message.textContent =
-                "Only ZIP files are supported.";
+            detailsHtml =
+                '<div class="result-details">';
 
-            message.style.color = "#d64545";
+            result.details.forEach(function (detail) {
 
-            return;
-        }
-
-
-        /* -------------------------------------------------
-           UI: SCANNING
-        ------------------------------------------------- */
-
-        scanBtn.disabled = true;
-
-        scanBtn.innerHTML =
-            '<span class="scan-icon">◌</span> Analyzing Project...';
-
-        message.textContent =
-            "Scanning project files...";
-
-        message.style.color = "#536dfe";
-
-
-        /* -------------------------------------------------
-           FORM DATA
-        ------------------------------------------------- */
-
-        var formData = new FormData();
-
-        formData.append(
-            "file",
-            selectedFile
-        );
-
-
-        /* =================================================
-           SEND TO FLASK
-           IMPORTANT: Flask route is /upload
-        ================================================= */
-
-        fetch("/upload", {
-            method: "POST",
-            body: formData
-        })
-
-        .then(function (response) {
-
-            console.log(
-                "Flask response status:",
-                response.status
-            );
-
-            if (!response.ok) {
-
-                return response.text().then(function (text) {
-
-                    throw new Error(
-                        "Server returned " +
-                        response.status +
-                        ": " +
-                        text
+                detailsHtml +=
+                    '<div>' +
+                    escapeHtml(
+                        detail.file || ""
                     );
 
-                });
+                if (detail.line) {
 
-            }
+                    detailsHtml +=
+                        ' — Line ' +
+                        escapeHtml(detail.line);
 
-            return response.text();
+                }
 
-        })
+                detailsHtml +=
+                    '</div>';
 
-        .then(function (text) {
+            });
 
-            console.log(
-                "Flask raw response:",
-                text
-            );
-
-            var data;
-
-            try {
-
-                data = JSON.parse(text);
-
-            } catch (error) {
-
-                throw new Error(
-                    "Flask did not return valid JSON. " +
-                    "Response: " +
-                    text.substring(0, 500)
-                );
-
-            }
-
-            return data;
-
-        })
-
-        .then(function (data) {
-
-            console.log(
-                "DeployCheck response:",
-                data
-            );
-
-            displayReport(data);
-
-        })
-
-        .catch(function (error) {
-
-            console.error(
-                "DeployCheck error:",
-                error
-            );
-
-            message.textContent =
-                "Unable to analyze the project: " +
-                error.message;
-
-            message.style.color = "#d64545";
-
-        })
-
-        .finally(function () {
-
-            scanBtn.disabled = false;
-
-            scanBtn.innerHTML =
-                '<span class="scan-icon">◉</span> Analyze Project';
-
-        });
-
-    });
-
-
-    /* =====================================================
-       DISPLAY REPORT
-    ===================================================== */
-
-    function displayReport(data) {
-
-        if (!reportSection || !report) {
-
-            console.error(
-                "Report elements are missing."
-            );
-
-            return;
+            detailsHtml +=
+                '</div>';
         }
-
-
-        reportSection.classList.remove("hidden");
-
-
-        /* -------------------------------------------------
-           SCORE
-        ------------------------------------------------- */
-
-        var score =
-            data.score !== undefined
-                ? data.score
-                : data.readiness_score !== undefined
-                    ? data.readiness_score
-                    : data.deployment_score !== undefined
-                        ? data.deployment_score
-                        : 0;
-
-
-        /* -------------------------------------------------
-           PROJECT TYPE
-        ------------------------------------------------- */
-
-        var projectType =
-            data.project_type ||
-            data.projectType ||
-            "Project";
-
-
-        /* -------------------------------------------------
-           SCORE NUMBER
-        ------------------------------------------------- */
-
-        score = Number(score);
-
-        if (isNaN(score)) {
-            score = 0;
-        }
-
-
-        score = Math.max(
-            0,
-            Math.min(
-                100,
-                score
-            )
-        );
-
-
-        /* -------------------------------------------------
-           SCORE MESSAGE
-        ------------------------------------------------- */
-
-        var scoreMessage;
-
-        if (score >= 80) {
-
-            scoreMessage =
-                "Ready for deployment";
-
-        } else if (score >= 60) {
-
-            scoreMessage =
-                "Needs some improvements";
-
-        } else {
-
-            scoreMessage =
-                "Deployment risks detected";
-        }
-
-
-        /* -------------------------------------------------
-           RESULT HTML
-        ------------------------------------------------- */
-
-        var html = "";
-
-
-        html +=
-            '<div class="report-score">' +
-            score +
-            '%' +
-            '</div>';
-
-
-        html +=
-            '<div class="report-title">' +
-            escapeHtml(scoreMessage) +
-            '</div>';
 
 
         html +=
             '<div class="report-item">' +
-            '<span>Project Type</span>' +
-            '<span class="report-status">' +
-            escapeHtml(projectType) +
+
+            '<span>' +
+            escapeHtml(result.name) +
             '</span>' +
+
+            '<span class="report-status ' +
+            escapeHtml(statusClass) +
+            '">' +
+
+            escapeHtml(result.message) +
+
+            '</span>' +
+
+            detailsHtml +
+
             '</div>';
 
-
-        /* -------------------------------------------------
-           COMMON CHECKS
-        ------------------------------------------------- */
-
-        addResultItem(
-            "README",
-            data.readme
-        );
+    });
 
 
-        addResultItem(
-            "Dependencies",
-            data.dependencies
-        );
+    /* =================================================
+       TECHNOLOGY STACK
+    ================================================= */
 
+    if (
+        reportData.technologies &&
+        Array.isArray(reportData.technologies)
+    ) {
 
-        addResultItem(
-            "Environment Configuration",
-            data.environment
-        );
+        html +=
+            '<div class="report-item">' +
 
+            '<span>Technology Stack</span>' +
 
-        addResultItem(
-            "Security",
-            data.secrets
-        );
+            '<span class="report-status">' +
 
+            escapeHtml(
+                reportData.technologies.join(", ")
+            ) +
 
-        addResultItem(
-            "Debug Mode",
-            data.debug
-        );
+            '</span>' +
 
-
-        addResultItem(
-            "Tests",
-            data.tests
-        );
-
-
-        /* -------------------------------------------------
-           CHECKS OBJECT
-        ------------------------------------------------- */
-
-        if (
-            data.checks &&
-            typeof data.checks === "object" &&
-            !Array.isArray(data.checks)
-        ) {
-
-            Object.keys(data.checks).forEach(
-                function (key) {
-
-                    var value = data.checks[key];
-
-                    if (
-                        value !== undefined &&
-                        value !== null
-                    ) {
-
-                        addResultItem(
-                            formatLabel(key),
-                            value
-                        );
-
-                    }
-
-                }
-            );
-        }
-
-
-        /* -------------------------------------------------
-           ISSUES
-        ------------------------------------------------- */
-
-        if (
-            data.issues &&
-            Array.isArray(data.issues) &&
-            data.issues.length > 0
-        ) {
-
-            html +=
-                '<div class="report-item">' +
-                '<span>Issues</span>' +
-                '<span class="report-status">' +
-                escapeHtml(data.issues.join(", ")) +
-                '</span>' +
-                '</div>';
-
-        }
-
-
-        /* -------------------------------------------------
-           RECOMMENDATIONS
-        ------------------------------------------------- */
-
-        if (
-            data.recommendations &&
-            Array.isArray(data.recommendations) &&
-            data.recommendations.length > 0
-        ) {
-
-            html +=
-                '<div class="report-item">' +
-                '<span>Recommendations</span>' +
-                '<span class="report-status">' +
-                escapeHtml(
-                    data.recommendations.join(", ")
-                ) +
-                '</span>' +
-                '</div>';
-
-        }
-
-
-        /* -------------------------------------------------
-           SHOW REPORT
-        ------------------------------------------------- */
-
-        report.innerHTML = html;
-
-
-        setTimeout(function () {
-
-            reportSection.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
-
-        }, 100);
-
-
-        message.textContent =
-            "Analysis completed successfully.";
-
-        message.style.color = "#1b9c62";
-
-
-        /* =================================================
-           ADD RESULT ITEM
-        ================================================= */
-
-        function addResultItem(label, value) {
-
-            if (
-                value === undefined ||
-                value === null
-            ) {
-
-                return;
-            }
-
-
-            var displayValue;
-
-
-            if (typeof value === "boolean") {
-
-                displayValue =
-                    value ? "Yes" : "No";
-
-            } else if (typeof value === "object") {
-
-                displayValue =
-                    JSON.stringify(value);
-
-            } else {
-
-                displayValue =
-                    String(value);
-
-            }
-
-
-            html +=
-                '<div class="report-item">' +
-                '<span>' +
-                escapeHtml(label) +
-                '</span>' +
-                '<span class="report-status">' +
-                escapeHtml(displayValue) +
-                '</span>' +
-                '</div>';
-
-        }
-
+            '</div>';
     }
 
 
-    /* =====================================================
-       FORMAT LABEL
-    ===================================================== */
+    /* =================================================
+       FILE COUNT
+    ================================================= */
 
-    function formatLabel(value) {
+    if (
+        reportData.files_scanned !== undefined
+    ) {
 
-        return String(value)
-            .replace(/_/g, " ")
-            .replace(/\b\w/g, function (letter) {
+        html +=
+            '<div class="report-item">' +
 
-                return letter.toUpperCase();
+            '<span>Files Scanned</span>' +
 
-            });
+            '<span class="report-status">' +
 
+            escapeHtml(
+                reportData.files_scanned
+            ) +
+
+            '</span>' +
+
+            '</div>';
     }
 
 
-    /* =====================================================
-       ESCAPE HTML
-    ===================================================== */
+    /* =================================================
+       DISPLAY
+    ================================================= */
 
-    function escapeHtml(value) {
+    report.innerHTML = html;
 
-        return String(value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
 
-    }
+    setTimeout(function () {
 
-});
+        reportSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+    }, 100);
+
+
+    message.textContent =
+        "Analysis completed successfully.";
+
+    message.style.color = "#1b9c62";
+}
