@@ -1,532 +1,639 @@
-const projectFile = document.getElementById("projectFile");
-const fileName = document.getElementById("fileName");
-const scanBtn = document.getElementById("scanBtn");
-const message = document.getElementById("message");
+document.addEventListener("DOMContentLoaded", function () {
+
+    /* =====================================================
+       GET ELEMENTS
+    ===================================================== */
+
+    var fileInput = document.getElementById("projectFile");
+    var fileName = document.getElementById("fileName");
+    var scanBtn = document.getElementById("scanBtn");
+    var message = document.getElementById("message");
+    var uploadZone = document.getElementById("uploadZone");
+    var reportSection = document.getElementById("reportSection");
+    var report = document.getElementById("report");
 
 
-/* =========================================================
-   FILE SELECTION
-========================================================= */
+    /* =====================================================
+       CHECK ELEMENTS
+    ===================================================== */
 
-projectFile.addEventListener("change", function () {
-
-    if (projectFile.files.length === 0) {
-
-        fileName.textContent = "No file selected";
-
-        return;
-    }
-
-    const file = projectFile.files[0];
-
-    fileName.textContent = file.name;
-
-});
-
-
-/* =========================================================
-   SCAN PROJECT
-========================================================= */
-
-scanBtn.addEventListener("click", async function () {
-
-    if (projectFile.files.length === 0) {
-
-        message.textContent = "Please select a ZIP file first.";
-
+    if (!fileInput || !fileName || !scanBtn || !message) {
+        console.error("DeployCheck: Required HTML elements are missing.");
         return;
     }
 
 
-    const file = projectFile.files[0];
+    /* =====================================================
+       FILE SELECTION
+    ===================================================== */
+
+    fileInput.addEventListener("change", function () {
+
+        if (fileInput.files.length === 0) {
+            fileName.textContent = "No project selected";
+            return;
+        }
+
+        var file = fileInput.files[0];
+
+        if (!file.name.toLowerCase().endsWith(".zip")) {
+
+            fileName.textContent = "No project selected";
+
+            message.textContent = "Please upload a ZIP file.";
+            message.style.color = "#d64545";
+
+            fileInput.value = "";
+
+            return;
+        }
+
+        fileName.textContent = file.name;
+
+        message.textContent = "";
+        message.className = "message";
+    });
 
 
-    if (!file.name.toLowerCase().endsWith(".zip")) {
+    /* =====================================================
+       DRAG AND DROP
+    ===================================================== */
 
-        message.textContent = "Please upload a ZIP file.";
+    if (uploadZone) {
 
-        return;
-    }
+        uploadZone.addEventListener("dragover", function (event) {
 
+            event.preventDefault();
 
-    const formData = new FormData();
+            uploadZone.classList.add("dragging");
 
-    formData.append("project", file);
-
-
-    scanBtn.disabled = true;
-
-    scanBtn.textContent = "Scanning...";
-
-    message.textContent = "Analyzing your project...";
-
-
-    try {
-
-        const response = await fetch("/upload", {
-            method: "POST",
-            body: formData
         });
 
 
-        const data = await response.json();
+        uploadZone.addEventListener("dragleave", function () {
+
+            uploadZone.classList.remove("dragging");
+
+        });
 
 
-        if (!data.success) {
+        uploadZone.addEventListener("drop", function (event) {
 
-            message.textContent = data.message;
+            event.preventDefault();
 
-            scanBtn.disabled = false;
+            uploadZone.classList.remove("dragging");
 
-            scanBtn.textContent = "Scan Project";
+            var files = event.dataTransfer.files;
+
+            if (!files || files.length === 0) {
+                return;
+            }
+
+            var droppedFile = files[0];
+
+            if (!droppedFile.name.toLowerCase().endsWith(".zip")) {
+
+                message.textContent =
+                    "Please upload a ZIP file.";
+
+                message.style.color = "#d64545";
+
+                return;
+            }
+
+            try {
+
+                var dataTransfer = new DataTransfer();
+
+                dataTransfer.items.add(droppedFile);
+
+                fileInput.files = dataTransfer.files;
+
+                fileName.textContent = droppedFile.name;
+
+                message.textContent = "";
+                message.className = "message";
+
+            } catch (error) {
+
+                console.error(
+                    "Could not process dropped file:",
+                    error
+                );
+
+                message.textContent =
+                    "Please select the ZIP file using the button.";
+
+                message.style.color = "#d64545";
+            }
+
+        });
+
+    }
+
+
+    /* =====================================================
+       SCAN BUTTON
+    ===================================================== */
+
+    scanBtn.addEventListener("click", function () {
+
+        if (fileInput.files.length === 0) {
+
+            message.textContent =
+                "Please select a ZIP file first.";
+
+            message.style.color = "#d64545";
 
             return;
         }
 
 
-        message.textContent = data.message;
+        var selectedFile = fileInput.files[0];
 
 
-        displayReport(data.report);
+        /* -------------------------------------------------
+           FILE TYPE CHECK
+        ------------------------------------------------- */
+
+        if (
+            !selectedFile.name
+                .toLowerCase()
+                .endsWith(".zip")
+        ) {
+
+            message.textContent =
+                "Only ZIP files are supported.";
+
+            message.style.color = "#d64545";
+
+            return;
+        }
 
 
-        scanBtn.textContent = "Scan Complete ✓";
+        /* -------------------------------------------------
+           UI: SCANNING
+        ------------------------------------------------- */
 
+        scanBtn.disabled = true;
 
-    } catch (error) {
-
-        console.error(error);
+        scanBtn.innerHTML =
+            '<span class="scan-icon">◌</span> Analyzing Project...';
 
         message.textContent =
-            "Something went wrong while scanning the project.";
+            "Scanning project files...";
 
-        scanBtn.textContent = "Scan Project";
-
-    }
-
-
-    scanBtn.disabled = false;
-
-});
-
-
-/* =========================================================
-   DISPLAY REPORT
-========================================================= */
-
-function displayReport(report) {
-
-    const existingReport =
-        document.getElementById("reportSection");
-
-
-    if (existingReport) {
-
-        existingReport.remove();
-
-    }
-
-
-    const section = document.createElement("section");
-
-    section.id = "reportSection";
-
-    section.className = "report-section";
-
-
-    /* -----------------------------------------------------
-       RESULT CARDS
-    ----------------------------------------------------- */
-
-    let resultHTML = "";
-
-
-    report.results.forEach(function (result) {
-
-        let icon = "✓";
-
-
-        if (result.status === "warning") {
-
-            icon = "⚠";
-
-        }
-
-
-        if (result.status === "critical") {
-
-            icon = "✕";
-
-        }
-
-
-        if (result.status === "pass") {
-
-            icon = "✓";
-
-        }
-
-
-        let detailsHTML = "";
+        message.style.color = "#536dfe";
 
 
         /* -------------------------------------------------
-           DETAILS
+           FORM DATA
         ------------------------------------------------- */
 
-        if (
-            result.details &&
-            result.details.length > 0
-        ) {
+        var formData = new FormData();
 
-            detailsHTML += `
-                <div class="issue-details">
-            `;
+        formData.append(
+            "file",
+            selectedFile
+        );
 
 
-            result.details.forEach(function (detail) {
+        /* =================================================
+           SEND TO FLASK
+           IMPORTANT: Flask route is /upload
+        ================================================= */
 
-                detailsHTML += `
-                    <div class="issue-detail">
+        fetch("/upload", {
+            method: "POST",
+            body: formData
+        })
 
-                        <div class="detail-row">
-                            <strong>File:</strong>
-                            <span>${escapeHTML(detail.file || "")}</span>
-                        </div>
+        .then(function (response) {
 
-                        <div class="detail-row">
-                            <strong>Line:</strong>
-                            <span>${detail.line || ""}</span>
-                        </div>
+            console.log(
+                "Flask response status:",
+                response.status
+            );
 
-                        ${
-                            detail.code
-                                ? `
-                                    <div class="code-box">
-                                        <code>${escapeHTML(detail.code)}</code>
-                                    </div>
-                                  `
-                                : ""
-                        }
+            if (!response.ok) {
 
-                    </div>
-                `;
+                return response.text().then(function (text) {
 
-            });
+                    throw new Error(
+                        "Server returned " +
+                        response.status +
+                        ": " +
+                        text
+                    );
 
+                });
 
-            detailsHTML += `
-                </div>
-            `;
+            }
 
-        }
+            return response.text();
 
+        })
 
-        /* -------------------------------------------------
-           RECOMMENDED FIX
-        ------------------------------------------------- */
+        .then(function (text) {
 
-        let fixHTML = "";
+            console.log(
+                "Flask raw response:",
+                text
+            );
 
+            var data;
 
-        if (result.status === "critical") {
+            try {
 
-            fixHTML = `
-                <div class="fix-box">
+                data = JSON.parse(text);
 
-                    <strong>Recommended Fix</strong>
+            } catch (error) {
 
-                    <p>
-                        Move API keys, passwords and other
-                        secrets to environment variables or
-                        secure secret management.
-                        Do not store real credentials directly
-                        inside source code.
-                    </p>
+                throw new Error(
+                    "Flask did not return valid JSON. " +
+                    "Response: " +
+                    text.substring(0, 500)
+                );
 
-                </div>
-            `;
+            }
 
-        }
+            return data;
 
+        })
 
-        if (
-            result.name === "README Documentation" &&
-            result.status === "warning"
-        ) {
+        .then(function (data) {
 
-            fixHTML = `
-                <div class="fix-box">
+            console.log(
+                "DeployCheck response:",
+                data
+            );
 
-                    <strong>Recommended Fix</strong>
+            displayReport(data);
 
-                    <p>
-                        Add a README.md file explaining the
-                        project, setup instructions,
-                        dependencies and deployment steps.
-                    </p>
+        })
 
-                </div>
-            `;
+        .catch(function (error) {
 
-        }
+            console.error(
+                "DeployCheck error:",
+                error
+            );
 
+            message.textContent =
+                "Unable to analyze the project: " +
+                error.message;
 
-        if (
-            result.name === "Dependencies" &&
-            result.status === "warning"
-        ) {
+            message.style.color = "#d64545";
 
-            fixHTML = `
-                <div class="fix-box">
+        })
 
-                    <strong>Recommended Fix</strong>
+        .finally(function () {
 
-                    <p>
-                        Add the appropriate dependency file,
-                        such as requirements.txt for Python
-                        or package.json for Node.js.
-                    </p>
+            scanBtn.disabled = false;
 
-                </div>
-            `;
-
-        }
-
-
-        if (
-            result.name === "Environment Configuration" &&
-            result.status === "warning"
-        ) {
-
-            fixHTML = `
-                <div class="fix-box">
-
-                    <strong>Recommended Fix</strong>
-
-                    <p>
-                        Use environment variables for
-                        deployment configuration and keep
-                        sensitive values outside your source code.
-                    </p>
-
-                </div>
-            `;
-
-        }
-
-
-        if (
-            result.name === "Debug Configuration" &&
-            result.status === "warning"
-        ) {
-
-            fixHTML = `
-                <div class="fix-box">
-
-                    <strong>Recommended Fix</strong>
-
-                    <p>
-                        Disable debug mode before deploying
-                        the application to production.
-                    </p>
-
-                </div>
-            `;
-
-        }
-
-
-        if (
-            result.name === "Testing" &&
-            result.status === "warning"
-        ) {
-
-            fixHTML = `
-                <div class="fix-box">
-
-                    <strong>Recommended Fix</strong>
-
-                    <p>
-                        Add basic tests for important project
-                        functionality before deployment.
-                    </p>
-
-                </div>
-            `;
-
-        }
-
-
-        resultHTML += `
-
-            <div class="result-card ${result.status}">
-
-                <div class="result-icon">
-                    ${icon}
-                </div>
-
-
-                <div class="result-content">
-
-                    <h3>
-                        ${escapeHTML(result.name)}
-                    </h3>
-
-
-                    <p>
-                        ${escapeHTML(result.message)}
-                    </p>
-
-
-                    ${detailsHTML}
-
-
-                    ${fixHTML}
-
-                </div>
-
-            </div>
-
-        `;
-
-    });
-
-
-    /* =====================================================
-       TECHNOLOGY DETECTION
-    ===================================================== */
-
-    let technologyHTML = "";
-
-
-    if (
-        report.technologies &&
-        report.technologies.length > 0
-    ) {
-
-        let technologyItems = "";
-
-
-        report.technologies.forEach(function (technology) {
-
-            technologyItems += `
-                <span class="technology-tag">
-                    ${escapeHTML(technology)}
-                </span>
-            `;
+            scanBtn.innerHTML =
+                '<span class="scan-icon">◉</span> Analyze Project';
 
         });
 
-
-        technologyHTML = `
-
-            <div class="technology-section">
-
-                <div class="technology-title">
-                    Detected Technology
-                </div>
+    });
 
 
-                <div class="technology-list">
+    /* =====================================================
+       DISPLAY REPORT
+    ===================================================== */
 
-                    ${technologyItems}
+    function displayReport(data) {
 
-                </div>
+        if (!reportSection || !report) {
 
-            </div>
+            console.error(
+                "Report elements are missing."
+            );
 
-        `;
+            return;
+        }
+
+
+        reportSection.classList.remove("hidden");
+
+
+        /* -------------------------------------------------
+           SCORE
+        ------------------------------------------------- */
+
+        var score =
+            data.score !== undefined
+                ? data.score
+                : data.readiness_score !== undefined
+                    ? data.readiness_score
+                    : data.deployment_score !== undefined
+                        ? data.deployment_score
+                        : 0;
+
+
+        /* -------------------------------------------------
+           PROJECT TYPE
+        ------------------------------------------------- */
+
+        var projectType =
+            data.project_type ||
+            data.projectType ||
+            "Project";
+
+
+        /* -------------------------------------------------
+           SCORE NUMBER
+        ------------------------------------------------- */
+
+        score = Number(score);
+
+        if (isNaN(score)) {
+            score = 0;
+        }
+
+
+        score = Math.max(
+            0,
+            Math.min(
+                100,
+                score
+            )
+        );
+
+
+        /* -------------------------------------------------
+           SCORE MESSAGE
+        ------------------------------------------------- */
+
+        var scoreMessage;
+
+        if (score >= 80) {
+
+            scoreMessage =
+                "Ready for deployment";
+
+        } else if (score >= 60) {
+
+            scoreMessage =
+                "Needs some improvements";
+
+        } else {
+
+            scoreMessage =
+                "Deployment risks detected";
+        }
+
+
+        /* -------------------------------------------------
+           RESULT HTML
+        ------------------------------------------------- */
+
+        var html = "";
+
+
+        html +=
+            '<div class="report-score">' +
+            score +
+            '%' +
+            '</div>';
+
+
+        html +=
+            '<div class="report-title">' +
+            escapeHtml(scoreMessage) +
+            '</div>';
+
+
+        html +=
+            '<div class="report-item">' +
+            '<span>Project Type</span>' +
+            '<span class="report-status">' +
+            escapeHtml(projectType) +
+            '</span>' +
+            '</div>';
+
+
+        /* -------------------------------------------------
+           COMMON CHECKS
+        ------------------------------------------------- */
+
+        addResultItem(
+            "README",
+            data.readme
+        );
+
+
+        addResultItem(
+            "Dependencies",
+            data.dependencies
+        );
+
+
+        addResultItem(
+            "Environment Configuration",
+            data.environment
+        );
+
+
+        addResultItem(
+            "Security",
+            data.secrets
+        );
+
+
+        addResultItem(
+            "Debug Mode",
+            data.debug
+        );
+
+
+        addResultItem(
+            "Tests",
+            data.tests
+        );
+
+
+        /* -------------------------------------------------
+           CHECKS OBJECT
+        ------------------------------------------------- */
+
+        if (
+            data.checks &&
+            typeof data.checks === "object" &&
+            !Array.isArray(data.checks)
+        ) {
+
+            Object.keys(data.checks).forEach(
+                function (key) {
+
+                    var value = data.checks[key];
+
+                    if (
+                        value !== undefined &&
+                        value !== null
+                    ) {
+
+                        addResultItem(
+                            formatLabel(key),
+                            value
+                        );
+
+                    }
+
+                }
+            );
+        }
+
+
+        /* -------------------------------------------------
+           ISSUES
+        ------------------------------------------------- */
+
+        if (
+            data.issues &&
+            Array.isArray(data.issues) &&
+            data.issues.length > 0
+        ) {
+
+            html +=
+                '<div class="report-item">' +
+                '<span>Issues</span>' +
+                '<span class="report-status">' +
+                escapeHtml(data.issues.join(", ")) +
+                '</span>' +
+                '</div>';
+
+        }
+
+
+        /* -------------------------------------------------
+           RECOMMENDATIONS
+        ------------------------------------------------- */
+
+        if (
+            data.recommendations &&
+            Array.isArray(data.recommendations) &&
+            data.recommendations.length > 0
+        ) {
+
+            html +=
+                '<div class="report-item">' +
+                '<span>Recommendations</span>' +
+                '<span class="report-status">' +
+                escapeHtml(
+                    data.recommendations.join(", ")
+                ) +
+                '</span>' +
+                '</div>';
+
+        }
+
+
+        /* -------------------------------------------------
+           SHOW REPORT
+        ------------------------------------------------- */
+
+        report.innerHTML = html;
+
+
+        setTimeout(function () {
+
+            reportSection.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        }, 100);
+
+
+        message.textContent =
+            "Analysis completed successfully.";
+
+        message.style.color = "#1b9c62";
+
+
+        /* =================================================
+           ADD RESULT ITEM
+        ================================================= */
+
+        function addResultItem(label, value) {
+
+            if (
+                value === undefined ||
+                value === null
+            ) {
+
+                return;
+            }
+
+
+            var displayValue;
+
+
+            if (typeof value === "boolean") {
+
+                displayValue =
+                    value ? "Yes" : "No";
+
+            } else if (typeof value === "object") {
+
+                displayValue =
+                    JSON.stringify(value);
+
+            } else {
+
+                displayValue =
+                    String(value);
+
+            }
+
+
+            html +=
+                '<div class="report-item">' +
+                '<span>' +
+                escapeHtml(label) +
+                '</span>' +
+                '<span class="report-status">' +
+                escapeHtml(displayValue) +
+                '</span>' +
+                '</div>';
+
+        }
 
     }
 
 
     /* =====================================================
-       OVERALL REPORT
+       FORMAT LABEL
     ===================================================== */
 
-    section.innerHTML = `
+    function formatLabel(value) {
 
-        <div class="report-header">
+        return String(value)
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, function (letter) {
 
-            <div>
+                return letter.toUpperCase();
 
-                <span class="badge">
-                    SCAN COMPLETE
-                </span>
+            });
 
-
-                <h2>
-                    Deployment Readiness Report
-                </h2>
+    }
 
 
-                <p>
-                    ${report.files_scanned}
-                    files scanned
-                </p>
+    /* =====================================================
+       ESCAPE HTML
+    ===================================================== */
 
+    function escapeHtml(value) {
 
-                ${technologyHTML}
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
-            </div>
+    }
 
-
-            <div class="score-box">
-
-                <div class="score">
-                    ${report.score}
-                </div>
-
-
-                <div>
-                    / 100
-                </div>
-
-
-                <strong>
-                    ${escapeHTML(report.overall)}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="results">
-
-            ${resultHTML}
-
-        </div>
-
-    `;
-
-
-    document
-        .querySelector(".container")
-        .appendChild(section);
-
-
-    section.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-    });
-
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-   Prevents project code from being interpreted as HTML
-========================================================= */
-
-function escapeHTML(value) {
-
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
-}
+});
