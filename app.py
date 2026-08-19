@@ -3,1119 +3,796 @@ import os
 import zipfile
 import shutil
 import re
-import json
-
 
 app = Flask(__name__)
-
 
 UPLOAD_FOLDER = "uploads"
 EXTRACT_FOLDER = "scanned_projects"
 
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(EXTRACT_FOLDER, exist_ok=True)
 
-
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 
-# ============================================================
+# =========================================================
 # HOME
-# ============================================================
+# =========================================================
 
 @app.route("/")
 def home():
-
     return render_template("index.html")
 
 
-# ============================================================
-# TECHNOLOGY DETECTION
-# ============================================================
+# =========================================================
+# PROJECT TYPE DETECTION
+# =========================================================
 
-def detect_technology(project_path):
-
-    all_files = []
-
+def detect_project_type(project_path):
+    files = []
 
     for root, dirs, filenames in os.walk(project_path):
-
         dirs[:] = [
             d for d in dirs
             if d not in {
-                "node_modules",
                 ".git",
                 "__pycache__",
-                "venv",
-                ".venv"
+                "node_modules",
+                ".venv",
+                "venv"
             }
         ]
 
+        for filename in filenames:
+            files.append(filename.lower())
+
+    detected = []
+
+    if "requirements.txt" in files:
+        detected.append("Python")
+
+    if "package.json" in files:
+        detected.append("Node.js")
+
+    if "manage.py" in files:
+        detected.append("Django")
+
+    if "dockerfile" in files:
+        detected.append("Docker")
+
+    # Look for framework names in Python files
+    for root, dirs, filenames in os.walk(project_path):
+        dirs[:] = [
+            d for d in dirs
+            if d not in {
+                ".git",
+                "__pycache__",
+                "node_modules",
+                ".venv",
+                "venv"
+            }
+        ]
 
         for filename in filenames:
-
-            relative_path = os.path.relpath(
-                os.path.join(root, filename),
-                project_path
-            )
-
-            all_files.append(relative_path)
-
-
-    file_names = {
-        os.path.basename(file).lower()
-        for file in all_files
-    }
-
-
-    extensions = {
-        os.path.splitext(file)[1].lower()
-        for file in all_files
-    }
-
-
-    technologies = []
-
-
-    # ========================================================
-    # PYTHON
-    # ========================================================
-
-    requirements = any(
-        os.path.basename(file).lower()
-        == "requirements.txt"
-        for file in all_files
-    )
-
-
-    pyproject = any(
-        os.path.basename(file).lower()
-        == "pyproject.toml"
-        for file in all_files
-    )
-
-
-    python_files = ".py" in extensions
-
-
-    if requirements or pyproject or python_files:
-
-        manage_py = "manage.py" in file_names
-
-
-        if manage_py:
-
-            technologies.append("Django")
-
-        else:
-
-            flask_found = False
-
-
-            for relative_file in all_files:
-
-                if not relative_file.lower().endswith(".py"):
-                    continue
-
-
-                full_path = os.path.join(
-                    project_path,
-                    relative_file
-                )
-
-
+            if filename.endswith(".py"):
                 try:
+                    filepath = os.path.join(root, filename)
 
                     with open(
-                        full_path,
+                        filepath,
                         "r",
                         encoding="utf-8",
                         errors="ignore"
                     ) as f:
+                        content = f.read()
 
-                        content = f.read().lower()
+                    if "from flask" in content or "import flask" in content:
+                        detected.append("Flask")
 
-
-                    if (
-                        "from flask import" in content
-                        or "import flask" in content
-                        or "flask(" in content
-                    ):
-
-                        flask_found = True
-
-                        break
-
+                    if "from fastapi" in content or "import fastapi" in content:
+                        detected.append("FastAPI")
 
                 except Exception:
+                    pass
 
-                    continue
+    # JavaScript frameworks
+    package_path = find_file(project_path, "package.json")
 
-
-            if flask_found:
-
-                technologies.append("Python / Flask")
-
-            else:
-
-                technologies.append("Python")
-
-
-    # ========================================================
-    # NODE.JS / JAVASCRIPT
-    # ========================================================
-
-    package_files = [
-        file
-        for file in all_files
-        if os.path.basename(file).lower()
-        == "package.json"
-    ]
-
-
-    if package_files:
-
-        technologies.append("Node.js")
-
-
-        package_path = os.path.join(
-            project_path,
-            package_files[0]
-        )
-
-
+    if package_path:
         try:
-
             with open(
                 package_path,
                 "r",
-                encoding="utf-8"
+                encoding="utf-8",
+                errors="ignore"
             ) as f:
+                content = f.read().lower()
 
-                package_data = json.load(f)
+            if '"react"' in content:
+                detected.append("React")
 
+            if '"vue"' in content:
+                detected.append("Vue")
 
-            dependencies = {}
+            if '"angular"' in content:
+                detected.append("Angular")
 
-
-            dependencies.update(
-                package_data.get(
-                    "dependencies",
-                    {}
-                )
-            )
-
-
-            dependencies.update(
-                package_data.get(
-                    "devDependencies",
-                    {}
-                )
-            )
-
-
-            dependency_names = {
-                name.lower()
-                for name in dependencies.keys()
-            }
-
-
-            if "react" in dependency_names:
-                technologies.append("React")
-
-
-            if "next" in dependency_names:
-                technologies.append("Next.js")
-
-
-            if "vue" in dependency_names:
-                technologies.append("Vue.js")
-
-
-            if "@angular/core" in dependency_names:
-                technologies.append("Angular")
-
-
-            if "express" in dependency_names:
-                technologies.append("Express.js")
-
-
-            if "vite" in dependency_names:
-                technologies.append("Vite")
-
-
-            if "typescript" in dependency_names:
-                technologies.append("TypeScript")
-
+            if '"next"' in content:
+                detected.append("Next.js")
 
         except Exception:
-
             pass
 
+    if not detected:
+        return ["Unknown"]
 
-    # ========================================================
-    # JAVA
-    # ========================================================
-
-    if "pom.xml" in file_names:
-
-        technologies.append("Java / Maven")
+    return list(dict.fromkeys(detected))
 
 
-    elif "build.gradle" in file_names:
+# =========================================================
+# FIND FILE
+# =========================================================
 
-        technologies.append("Java / Gradle")
+def find_file(project_path, filename):
+    for root, dirs, files in os.walk(project_path):
+        dirs[:] = [
+            d for d in dirs
+            if d not in {
+                ".git",
+                "__pycache__",
+                "node_modules",
+                ".venv",
+                "venv"
+            }
+        ]
 
+        for file in files:
+            if file.lower() == filename.lower():
+                return os.path.join(root, file)
 
-    elif ".java" in extensions:
-
-        technologies.append("Java")
-
-
-    # ========================================================
-    # DOCKER
-    # ========================================================
-
-    if "dockerfile" in file_names:
-
-        technologies.append("Docker")
-
-
-    # ========================================================
-    # HTML
-    # ========================================================
-
-    if ".html" in extensions:
-
-        technologies.append("HTML")
+    return None
 
 
-    # ========================================================
-    # CSS
-    # ========================================================
+# =========================================================
+# ADD FINDING
+# =========================================================
 
-    if ".css" in extensions:
-
-        technologies.append("CSS")
-
-
-    # ========================================================
-    # JAVASCRIPT
-    # ========================================================
-
-    if (
-        ".js" in extensions
-        and "Node.js" not in technologies
-    ):
-
-        technologies.append("JavaScript")
+def add_finding(findings, category, severity, title, impact, recommendation):
+    findings.append({
+        "category": category,
+        "severity": severity,
+        "title": title,
+        "impact": impact,
+        "recommendation": recommendation
+    })
 
 
-    # ========================================================
-    # TYPESCRIPT
-    # ========================================================
+# =========================================================
+# README CHECK
+# =========================================================
 
-    if (
-        ".ts" in extensions
-        and "TypeScript" not in technologies
-    ):
+def check_readme(project_path, findings):
 
-        technologies.append("TypeScript")
+    readme = find_file(project_path, "README.md")
+
+    if not readme:
+        add_finding(
+            findings,
+            "Project Structure",
+            "Medium",
+            "README.md not found",
+            "Developers may not have clear instructions for understanding or running the project.",
+            "Add a README.md containing project description, installation steps, usage instructions, environment variables and deployment instructions."
+        )
+        return False
+
+    try:
+        with open(
+            readme,
+            "r",
+            encoding="utf-8",
+            errors="ignore"
+        ) as f:
+            content = f.read().strip()
+
+        if len(content) < 50:
+            add_finding(
+                findings,
+                "Project Structure",
+                "Medium",
+                "README.md is too short",
+                "The project may lack important setup and usage documentation.",
+                "Expand the README with project purpose, installation, configuration, usage and deployment information."
+            )
+            return False
+
+        return True
+
+    except Exception:
+        return False
 
 
-    # ========================================================
-    # GIT
-    # ========================================================
+# =========================================================
+# DEPENDENCY CHECK
+# =========================================================
 
-    if ".gitignore" in file_names:
+def check_dependencies(project_path, findings):
 
-        technologies.append("Git")
+    requirements = find_file(project_path, "requirements.txt")
+    package_json = find_file(project_path, "package.json")
 
+    if requirements or package_json:
 
-    # ========================================================
-    # UNKNOWN
-    # ========================================================
+        return True
 
-    if not technologies:
-
-        technologies.append("Unknown")
-
-
-    return list(
-        dict.fromkeys(technologies)
+    add_finding(
+        findings,
+        "Dependencies",
+        "High",
+        "Dependency file not detected",
+        "The deployment platform may not know which dependencies need to be installed.",
+        "Add requirements.txt for Python projects or package.json for Node.js projects."
     )
 
-
-# ============================================================
-# PROJECT SCANNER
-# ============================================================
-
-def scan_project(project_path):
-
-    results = []
-
-    score = 100
-
-    all_files = []
+    return False
 
 
-    # ========================================================
-    # GET ALL FILES
-    # ========================================================
+# =========================================================
+# ENVIRONMENT CONFIGURATION
+# =========================================================
+
+def check_environment(project_path, findings):
+
+    env_file = find_file(project_path, ".env")
+    env_example = find_file(project_path, ".env.example")
+
+    if env_file and not env_example:
+
+        add_finding(
+            findings,
+            "Configuration",
+            "High",
+            ".env file detected without .env.example",
+            "Environment-specific values may be difficult to configure safely during deployment.",
+            "Create a .env.example containing variable names only and keep real credentials outside source control."
+        )
+
+        return False
+
+    if env_example:
+        return True
+
+    add_finding(
+        findings,
+        "Configuration",
+        "Low",
+        "Environment configuration template not detected",
+        "Required environment variables may not be clearly documented.",
+        "Consider adding a .env.example file containing required environment variable names."
+    )
+
+    return False
+
+
+# =========================================================
+# SECRET DETECTION
+# =========================================================
+
+def check_secrets(project_path, findings):
+
+    secret_patterns = [
+        (
+            r"(?i)(api[_-]?key)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
+            "Possible API key"
+        ),
+        (
+            r"(?i)(password)\s*[:=]\s*['\"][^'\"]{6,}['\"]",
+            "Possible hardcoded password"
+        ),
+        (
+            r"(?i)(secret[_-]?key)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
+            "Possible secret key"
+        ),
+        (
+            r"(?i)(access[_-]?token)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
+            "Possible access token"
+        ),
+        (
+            r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----",
+            "Private key detected"
+        )
+    ]
+
+    found = False
+
+    ignored_dirs = {
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        "uploads",
+        "scanned_projects"
+    }
+
+    for root, dirs, files in os.walk(project_path):
+
+        dirs[:] = [
+            d for d in dirs
+            if d not in ignored_dirs
+        ]
+
+        for filename in files:
+
+            if filename.lower() in {
+                ".env.example",
+                "readme.md"
+            }:
+                continue
+
+            filepath = os.path.join(root, filename)
+
+            try:
+
+                if os.path.getsize(filepath) > 2 * 1024 * 1024:
+                    continue
+
+                with open(
+                    filepath,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore"
+                ) as f:
+                    content = f.read()
+
+                for pattern, label in secret_patterns:
+
+                    if re.search(pattern, content):
+
+                        add_finding(
+                            findings,
+                            "Security",
+                            "Critical",
+                            f"{label} detected",
+                            "Hardcoded credentials can be exposed through source code or version control.",
+                            "Move the value to an environment variable or secure secret-management system."
+                        )
+
+                        found = True
+                        break
+
+            except Exception:
+                continue
+
+    return not found
+
+
+# =========================================================
+# DEBUG MODE CHECK
+# =========================================================
+
+def check_debug_mode(project_path, findings):
+
+    debug_found = False
 
     for root, dirs, files in os.walk(project_path):
 
         dirs[:] = [
             d for d in dirs
             if d not in {
-                "node_modules",
                 ".git",
                 "__pycache__",
-                "venv",
-                ".venv"
+                "node_modules",
+                ".venv",
+                "venv"
             }
         ]
 
+        for filename in files:
+
+            if not filename.endswith((".py", ".js", ".ts")):
+                continue
+
+            filepath = os.path.join(root, filename)
+
+            try:
+
+                with open(
+                    filepath,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore"
+                ) as f:
+                    content = f.read()
+
+                patterns = [
+                    r"debug\s*=\s*True",
+                    r"debug\s*=\s*true",
+                    r"app\.run\(.*debug\s*=\s*True",
+                    r"app\.run\(.*debug\s*=\s*true"
+                ]
+
+                for pattern in patterns:
+
+                    if re.search(pattern, content):
+
+                        add_finding(
+                            findings,
+                            "Security",
+                            "High",
+                            "Debug mode appears to be enabled",
+                            "Debug mode can expose application details and should not normally be enabled in production.",
+                            "Disable debug mode before production deployment and use environment-based configuration."
+                        )
+
+                        debug_found = True
+                        break
+
+            except Exception:
+                continue
+
+    return not debug_found
+
+
+# =========================================================
+# TEST DETECTION
+# =========================================================
+
+def check_tests(project_path, findings):
+
+    test_found = False
+
+    test_directories = {
+        "test",
+        "tests",
+        "__tests__"
+    }
+
+    for root, dirs, files in os.walk(project_path):
+
+        dirs[:] = [
+            d for d in dirs
+            if d not in {
+                ".git",
+                "__pycache__",
+                "node_modules",
+                ".venv",
+                "venv"
+            }
+        ]
+
+        current_dirs = {
+            d.lower()
+            for d in dirs
+        }
+
+        if current_dirs.intersection(test_directories):
+            test_found = True
+            break
 
         for file in files:
 
-            full_path = os.path.join(
-                root,
-                file
-            )
+            filename = file.lower()
+
+            if (
+                filename.startswith("test_")
+                or filename.endswith("_test.py")
+                or filename.endswith(".test.js")
+                or filename.endswith(".spec.js")
+                or filename.endswith(".test.ts")
+            ):
+                test_found = True
+                break
+
+        if test_found:
+            break
+
+    if not test_found:
+
+        add_finding(
+            findings,
+            "Testing",
+            "Medium",
+            "Automated tests not detected",
+            "Deployment problems may not be identified before release.",
+            "Add automated tests and run them before deploying the application."
+        )
+
+    return test_found
 
 
-            relative_path = os.path.relpath(
-                full_path,
-                project_path
-            )
+# =========================================================
+# DOCKER CHECK
+# =========================================================
 
+def check_docker(project_path, findings):
 
-            all_files.append(relative_path)
+    dockerfile = find_file(project_path, "Dockerfile")
 
+    if dockerfile:
+        return True
 
-    lower_files = [
-        file.lower()
-        for file in all_files
-    ]
-
-
-    # ========================================================
-    # 1. README
-    # ========================================================
-
-    readme_found = any(
-        os.path.basename(file).lower()
-        in {
-            "readme",
-            "readme.md",
-            "readme.txt"
-        }
-        for file in all_files
+    add_finding(
+        findings,
+        "Deployment",
+        "Low",
+        "Dockerfile not detected",
+        "Containerized deployment is not currently configured.",
+        "A Dockerfile can be added if consistent container-based deployment is required."
     )
 
-
-    if readme_found:
-
-        results.append({
-            "name": "README Documentation",
-            "status": "pass",
-            "message": "README documentation was found.",
-            "details": []
-        })
+    return False
 
 
-    else:
+# =========================================================
+# CATEGORY SCORE
+# =========================================================
 
-        score -= 10
+def calculate_category_scores(findings, checks):
 
-
-        results.append({
-            "name": "README Documentation",
-            "status": "warning",
-            "message": "No README file was found.",
-            "details": []
-        })
-
-
-    # ========================================================
-    # 2. DEPENDENCIES
-    # ========================================================
-
-    dependency_files = {
-        "requirements.txt",
-        "package.json",
-        "pom.xml",
-        "build.gradle",
-        "pyproject.toml"
+    categories = {
+        "Security": 100,
+        "Configuration": 100,
+        "Dependencies": 100,
+        "Project Structure": 100,
+        "Testing": 100,
+        "Deployment": 100
     }
 
-
-    dependency_found = any(
-        os.path.basename(file).lower()
-        in dependency_files
-        for file in all_files
-    )
-
-
-    if dependency_found:
-
-        results.append({
-            "name": "Dependencies",
-            "status": "pass",
-            "message": "A dependency configuration file was found.",
-            "details": []
-        })
-
-
-    else:
-
-        score -= 15
-
-
-        results.append({
-            "name": "Dependencies",
-            "status": "warning",
-            "message": "No common dependency file was detected.",
-            "details": []
-        })
-
-
-    # ========================================================
-    # 3. ENVIRONMENT CONFIGURATION
-    # ========================================================
-
-    env_example_found = any(
-        os.path.basename(file).lower()
-        == ".env.example"
-        for file in all_files
-    )
-
-
-    env_found = any(
-        os.path.basename(file).lower()
-        == ".env"
-        for file in all_files
-    )
-
-
-    if env_example_found:
-
-        results.append({
-            "name": "Environment Configuration",
-            "status": "pass",
-            "message": ".env.example was found.",
-            "details": []
-        })
-
-
-    elif env_found:
-
-        score -= 5
-
-
-        results.append({
-            "name": "Environment Configuration",
-            "status": "warning",
-            "message": ".env file exists. Make sure it is not committed publicly.",
-            "details": []
-        })
-
-
-    else:
-
-        results.append({
-            "name": "Environment Configuration",
-            "status": "pass",
-            "message": "No environment file is required or detected.",
-            "details": []
-        })
-
-
-    # ========================================================
-    # 4. SECRET DETECTION
-    # ========================================================
-
-    secret_found = False
-
-    secret_details = []
-
-
-    secret_patterns = [
-
-        r"api[_-]?key\s*[:=]\s*['\"][^'\"]{8,}['\"]",
-
-        r"password\s*[:=]\s*['\"][^'\"]{4,}['\"]",
-
-        r"secret[_-]?key\s*[:=]\s*['\"][^'\"]{8,}['\"]",
-
-        r"access[_-]?token\s*[:=]\s*['\"][^'\"]{8,}['\"]",
-
-        r"aws_access_key_id\s*[:=]\s*['\"][^'\"]+['\"]",
-
-        r"private[_-]?key\s*[:=]\s*['\"][^'\"]+['\"]"
-    ]
-
-
-    files_to_scan = [
-        file
-        for file in all_files
-        if file.lower().endswith(
-            (
-                ".py",
-                ".js",
-                ".ts",
-                ".java",
-                ".json",
-                ".env",
-                ".txt"
-            )
-        )
-    ]
-
-
-    ignored_words = {
-        "your_api_key",
-        "your-api-key",
-        "your_password",
-        "your_secret",
-        "example",
-        "placeholder",
-        "changeme"
+    penalties = {
+        "Critical": 35,
+        "High": 20,
+        "Medium": 10,
+        "Low": 5
     }
 
+    for finding in findings:
 
-    for relative_file in files_to_scan:
+        category = finding["category"]
+        severity = finding["severity"]
 
-        full_path = os.path.join(
-            project_path,
-            relative_file
+        if category in categories:
+            categories[category] -= penalties.get(
+                severity,
+                0
+            )
+
+    for category in categories:
+        categories[category] = max(
+            0,
+            min(100, categories[category])
         )
 
-
-        try:
-
-            with open(
-                full_path,
-                "r",
-                encoding="utf-8",
-                errors="ignore"
-            ) as f:
-
-                lines = f.readlines()
-
-
-            for line_number, line in enumerate(
-                lines,
-                start=1
-            ):
-
-                if line.strip().startswith(
-                    ("#", "//")
-                ):
-
-                    continue
-
-
-                for pattern in secret_patterns:
-
-                    match = re.search(
-                        pattern,
-                        line,
-                        re.IGNORECASE
-                    )
-
-
-                    if match:
-
-                        matched_text = (
-                            match.group(0).lower()
-                        )
-
-
-                        if any(
-                            word in matched_text
-                            for word in ignored_words
-                        ):
-
-                            continue
-
-
-                        secret_found = True
-
-
-                        secret_details.append({
-                            "file": relative_file,
-                            "line": line_number,
-                            "code": line.strip(),
-                            "fix": (
-                                "Move credentials to environment "
-                                "variables or a secure secret manager."
-                            )
-                        })
-
-
-                        break
-
-
-        except Exception:
-
-            continue
-
-
-    if secret_found:
-
-        score -= 25
-
-
-        results.append({
-            "name": "Security",
-            "status": "critical",
-            "message": "Possible hardcoded secret or credential detected.",
-            "details": secret_details
-        })
-
-
-    else:
-
-        results.append({
-            "name": "Security",
-            "status": "pass",
-            "message": "No obvious hardcoded secrets were detected.",
-            "details": []
-        })
-
-
-    # ========================================================
-    # 5. DEBUG MODE
-    # ========================================================
-
-    debug_found = False
-
-    debug_details = []
-
-
-    for relative_file in all_files:
-
-        if not relative_file.lower().endswith(
-            (".py", ".js", ".ts")
-        ):
-
-            continue
-
-
-        full_path = os.path.join(
-            project_path,
-            relative_file
-        )
-
-
-        try:
-
-            with open(
-                full_path,
-                "r",
-                encoding="utf-8",
-                errors="ignore"
-            ) as f:
-
-                lines = f.readlines()
-
-
-            for line_number, line in enumerate(
-                lines,
-                start=1
-            ):
-
-                if re.search(
-                    r"\bdebug\s*=\s*true\b",
-                    line,
-                    re.IGNORECASE
-                ):
-
-                    debug_found = True
-
-
-                    debug_details.append({
-                        "file": relative_file,
-                        "line": line_number,
-                        "code": line.strip(),
-                        "fix": (
-                            "Disable debug mode before "
-                            "production deployment."
-                        )
-                    })
-
-
-        except Exception:
-
-            continue
-
-
-    if debug_found:
-
-        score -= 10
-
-
-        results.append({
-            "name": "Debug Configuration",
-            "status": "warning",
-            "message": "Debug mode appears to be enabled.",
-            "details": debug_details
-        })
-
-
-    else:
-
-        results.append({
-            "name": "Debug Configuration",
-            "status": "pass",
-            "message": "No obvious debug mode configuration was detected.",
-            "details": []
-        })
-
-
-    # ========================================================
-    # 6. TESTING
-    # ========================================================
-
-    test_found = any(
-        (
-            "/test/" in file.lower()
-            or "\\test\\" in file.lower()
-            or "/tests/" in file.lower()
-            or "\\tests\\" in file.lower()
-            or os.path.basename(file).lower().startswith("test_")
-            or os.path.basename(file).lower().endswith("_test.py")
-        )
-        for file in all_files
+    return categories
+
+
+# =========================================================
+# OVERALL SCORE
+# =========================================================
+
+def calculate_overall_score(category_scores):
+
+    weights = {
+        "Security": 0.25,
+        "Configuration": 0.15,
+        "Dependencies": 0.15,
+        "Project Structure": 0.15,
+        "Testing": 0.15,
+        "Deployment": 0.15
+    }
+
+    score = sum(
+        category_scores[category] * weight
+        for category, weight in weights.items()
     )
 
-
-    if test_found:
-
-        results.append({
-            "name": "Testing",
-            "status": "pass",
-            "message": "Test files or test directories were detected.",
-            "details": []
-        })
+    return round(score)
 
 
-    else:
+# =========================================================
+# SCAN PROJECT
+# =========================================================
 
-        score -= 10
+def scan_project(project_path):
 
+    findings = []
 
-        results.append({
-            "name": "Testing",
-            "status": "warning",
-            "message": "No obvious test files were detected.",
-            "details": []
-        })
+    readme = check_readme(
+        project_path,
+        findings
+    )
 
+    dependencies = check_dependencies(
+        project_path,
+        findings
+    )
 
-    # ========================================================
-    # 7. PROJECT TYPE
-    # ========================================================
+    environment = check_environment(
+        project_path,
+        findings
+    )
 
-    project_type = "Unknown"
+    secrets = check_secrets(
+        project_path,
+        findings
+    )
 
+    debug = check_debug_mode(
+        project_path,
+        findings
+    )
 
-    if any(
-        file.endswith(".py")
-        for file in lower_files
-    ):
+    tests = check_tests(
+        project_path,
+        findings
+    )
 
-        project_type = "Python"
+    docker = check_docker(
+        project_path,
+        findings
+    )
 
-
-    elif any(
-        os.path.basename(file) == "package.json"
-        for file in lower_files
-    ):
-
-        project_type = "Node.js / JavaScript"
-
-
-    elif any(
-        file.endswith(".java")
-        for file in lower_files
-    ):
-
-        project_type = "Java"
-
-
-    elif any(
-        file.endswith(".html")
-        for file in lower_files
-    ):
-
-        project_type = "Web Project"
-
-
-    results.append({
-        "name": "Project Type",
-        "status": "pass",
-        "message": (
-            f"Detected project type: {project_type}"
-        ),
-        "details": []
-    })
-
-
-    # ========================================================
-    # 8. TECHNOLOGY STACK
-    # ========================================================
-
-    technologies = detect_technology(
+    project_types = detect_project_type(
         project_path
     )
 
+    checks = {
+        "readme": readme,
+        "dependencies": dependencies,
+        "environment": environment,
+        "secrets": secrets,
+        "debug": debug,
+        "tests": tests,
+        "docker": docker
+    }
 
-    results.append({
-        "name": "Technology Stack",
-        "status": "pass",
-        "message": (
-            "Detected technologies: "
-            + ", ".join(technologies)
-        ),
-        "details": []
-    })
-
-
-    # ========================================================
-    # SCORE
-    # ========================================================
-
-    score = max(
-        0,
-        min(100, score)
+    category_scores = calculate_category_scores(
+        findings,
+        checks
     )
 
+    overall_score = calculate_overall_score(
+        category_scores
+    )
 
-    if score >= 80:
+    critical = sum(
+        1
+        for f in findings
+        if f["severity"] == "Critical"
+    )
 
-        overall = "Ready"
+    high = sum(
+        1
+        for f in findings
+        if f["severity"] == "High"
+    )
 
-    elif score >= 60:
+    medium = sum(
+        1
+        for f in findings
+        if f["severity"] == "Medium"
+    )
 
-        overall = "Needs Attention"
-
-    else:
-
-        overall = "High Risk"
-
-
-    # ========================================================
-    # FINAL REPORT
-    # ========================================================
+    low = sum(
+        1
+        for f in findings
+        if f["severity"] == "Low"
+    )
 
     return {
-
-        "score": score,
-
-        "overall": overall,
-
-        "files_scanned": len(all_files),
-
-        "technologies": technologies,
-
-        "results": results
-
+        "score": overall_score,
+        "project_type": project_types,
+        "categories": category_scores,
+        "findings": findings,
+        "summary": {
+            "critical": critical,
+            "high": high,
+            "medium": medium,
+            "low": low
+        }
     }
 
 
-# ============================================================
+# =========================================================
 # UPLOAD + SCAN
-# ============================================================
+# =========================================================
 
-@app.route(
-    "/upload",
-    methods=["POST"]
-)
-def upload_project():
+@app.route("/scan", methods=["POST"])
+def scan():
 
     if "project" not in request.files:
 
         return jsonify({
             "success": False,
-            "message": "No project file selected."
-        })
-
+            "error": "No project file uploaded."
+        }), 400
 
     file = request.files["project"]
-
 
     if file.filename == "":
 
         return jsonify({
             "success": False,
-            "message": "Please select a ZIP file."
-        })
-
+            "error": "Please select a ZIP file."
+        }), 400
 
     if not file.filename.lower().endswith(".zip"):
 
         return jsonify({
             "success": False,
-            "message": "Only ZIP files are supported."
-        })
+            "error": "Only ZIP files are supported."
+        }), 400
 
+    # Clean previous scan
+    shutil.rmtree(EXTRACT_FOLDER, ignore_errors=True)
+    os.makedirs(EXTRACT_FOLDER, exist_ok=True)
 
-    # ========================================================
-    # SAFE FILENAME
-    # ========================================================
-
-    safe_filename = os.path.basename(
+    upload_path = os.path.join(
+        UPLOAD_FOLDER,
         file.filename
     )
 
-
-    zip_path = os.path.join(
-        UPLOAD_FOLDER,
-        safe_filename
-    )
-
-
-    file.save(zip_path)
-
-
-    project_name = os.path.splitext(
-        safe_filename
-    )[0]
-
-
-    extract_path = os.path.join(
-        EXTRACT_FOLDER,
-        project_name
-    )
-
-
-    # ========================================================
-    # REMOVE PREVIOUS SCAN
-    # ========================================================
-
-    if os.path.exists(extract_path):
-
-        shutil.rmtree(
-            extract_path
-        )
-
-
-    os.makedirs(
-        extract_path,
-        exist_ok=True
-    )
-
-
-    # ========================================================
-    # SAFE ZIP EXTRACTION
-    # ========================================================
+    file.save(upload_path)
 
     try:
 
         with zipfile.ZipFile(
-            zip_path,
+            upload_path,
             "r"
         ) as zip_ref:
 
-            base_path = os.path.abspath(
-                extract_path
-            )
-
-
-            for member in zip_ref.infolist():
-
-                target_path = os.path.abspath(
-                    os.path.join(
-                        extract_path,
-                        member.filename
-                    )
-                )
-
-
-                if not (
-                    target_path == base_path
-                    or target_path.startswith(
-                        base_path + os.sep
-                    )
-                ):
-
-                    return jsonify({
-                        "success": False,
-                        "message": "Unsafe ZIP file detected."
-                    })
-
-
             zip_ref.extractall(
-                extract_path
+                EXTRACT_FOLDER
             )
-
 
     except zipfile.BadZipFile:
 
         return jsonify({
             "success": False,
-            "message": "The uploaded file is not a valid ZIP archive."
-        })
+            "error": "Invalid ZIP file."
+        }), 400
 
+    # Handle ZIP containing one root folder
+    scan_root = EXTRACT_FOLDER
 
-    except Exception as error:
+    items = os.listdir(
+        EXTRACT_FOLDER
+    )
 
-        return jsonify({
-            "success": False,
-            "message": (
-                f"Could not extract ZIP file: {error}"
-            )
-        })
+    if len(items) == 1:
 
-
-    # ========================================================
-    # SCAN PROJECT
-    # ========================================================
-
-    try:
-
-        report = scan_project(
-            extract_path
+        single_path = os.path.join(
+            EXTRACT_FOLDER,
+            items[0]
         )
 
+        if os.path.isdir(single_path):
+            scan_root = single_path
 
-    except Exception as error:
-
-        return jsonify({
-            "success": False,
-            "message": (
-                f"Project scanning failed: {error}"
-            )
-        })
-
-
-    # ========================================================
-    # RESPONSE
-    # ========================================================
+    result = scan_project(
+        scan_root
+    )
 
     return jsonify({
-
         "success": True,
-
-        "message": "Project scanned successfully.",
-
-        "report": report
-
+        "result": result
     })
 
 
-# ============================================================
-# RUN APPLICATION
-# ============================================================
+# =========================================================
+# RUN
+# =========================================================
 
 if __name__ == "__main__":
+
     app.run(
+        debug=True,
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
-        debug=False
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        )
     )
-    
