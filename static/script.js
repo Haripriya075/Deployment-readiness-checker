@@ -32,96 +32,109 @@ document.addEventListener("DOMContentLoaded", () => {
        FILE SELECTION
     ====================================================== */
 
-    selectButton.addEventListener("click", () => {
-        projectFile.click();
-    });
-
-
-    projectFile.addEventListener("change", () => {
-
-        if (projectFile.files.length === 0) {
-            return;
+    selectButton.addEventListener(
+        "click",
+        () => {
+            projectFile.click();
         }
+    );
 
-        const file = projectFile.files[0];
 
-        handleFile(file);
-    });
+    projectFile.addEventListener(
+        "change",
+        () => {
+
+            if (
+                projectFile.files.length === 0
+            ) {
+                return;
+            }
+
+            const file =
+                projectFile.files[0];
+
+            handleFile(file);
+        }
+    );
 
 
     /* =====================================================
        DRAG & DROP
     ====================================================== */
 
-    ["dragenter", "dragover"].forEach(eventName => {
+    [
+        "dragenter",
+        "dragover"
+    ].forEach(eventName => {
 
-        dropZone.addEventListener(eventName, event => {
+        dropZone.addEventListener(
+            eventName,
+            event => {
 
-            event.preventDefault();
+                event.preventDefault();
 
-            dropZone.classList.add("dragover");
-        });
-
-    });
-
-
-    ["dragleave", "drop"].forEach(eventName => {
-
-        dropZone.addEventListener(eventName, event => {
-
-            event.preventDefault();
-
-            dropZone.classList.remove("dragover");
-        });
+                dropZone.classList.add(
+                    "dragover"
+                );
+            }
+        );
 
     });
 
 
-    dropZone.addEventListener("drop", event => {
+    [
+        "dragleave",
+        "drop"
+    ].forEach(eventName => {
 
-        const files = event.dataTransfer.files;
+        dropZone.addEventListener(
+            eventName,
+            event => {
 
-        if (!files.length) {
-            return;
-        }
+                event.preventDefault();
 
-        const file = files[0];
+                dropZone.classList.remove(
+                    "dragover"
+                );
+            }
+        );
 
-        if (
-            !file.name
-                .toLowerCase()
-                .endsWith(".zip")
-        ) {
-
-            showError(
-                "Please upload a ZIP file."
-            );
-
-            return;
-        }
-
-        /*
-         * Assign the dropped file to the file input.
-         * DataTransfer is used for browser compatibility.
-         */
-        try {
-
-            const dataTransfer = new DataTransfer();
-
-            dataTransfer.items.add(file);
-
-            projectFile.files = dataTransfer.files;
-
-        } catch (error) {
-
-            console.warn(
-                "Unable to assign dropped file to input.",
-                error
-            );
-        }
-
-        handleFile(file);
     });
+
+
+    dropZone.addEventListener(
+        "drop",
+        event => {
+
+            const files =
+                event.dataTransfer.files;
+
+            if (!files.length) {
+                return;
+            }
+
+            const file =
+                files[0];
+
+            if (
+                !file.name
+                    .toLowerCase()
+                    .endsWith(".zip")
+            ) {
+
+                showError(
+                    "Please upload a ZIP file."
+                );
+
+                return;
+            }
+
+            projectFile.files =
+                files;
+
+            handleFile(file);
+        }
+    );
 
 
     /* =====================================================
@@ -130,9 +143,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function handleFile(file) {
 
-        errorBox.classList.add("hidden");
+        errorBox.classList.add(
+            "hidden"
+        );
 
-        results.classList.add("hidden");
+        results.classList.add(
+            "hidden"
+        );
 
         if (
             !file.name
@@ -160,123 +177,83 @@ document.addEventListener("DOMContentLoaded", () => {
        SCAN
     ====================================================== */
 
-    scanButton.addEventListener("click", async () => {
-
-        if (!projectFile.files.length) {
-
-            showError(
-                "Please select a ZIP file."
-            );
-
-            return;
-        }
-
-        const file = projectFile.files[0];
-
-        if (
-            !file.name
-                .toLowerCase()
-                .endsWith(".zip")
-        ) {
-
-            showError(
-                "Only ZIP files are supported."
-            );
-
-            return;
-        }
-
-        const formData = new FormData();
-
-        formData.append(
-            "project",
-            file
-        );
-
-        setLoading(true);
-
-        errorBox.classList.add("hidden");
-
-        results.classList.add("hidden");
-
-
-        try {
-
-            const response = await fetch(
-                "/scan",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-
-            /*
-             * First check whether the server returned JSON.
-             * This prevents a JSON parsing error if Flask
-             * returns an HTML error page.
-             */
-
-            const contentType =
-                response.headers.get("content-type") || "";
-
-
-            if (!contentType.includes("application/json")) {
-
-                throw new Error(
-                    "Server returned an unexpected response. Please check the Flask server."
-                );
-            }
-
-
-            const data =
-                await response.json();
-
+    scanButton.addEventListener(
+        "click",
+        async () => {
 
             if (
-                !response.ok ||
-                !data.success
+                !projectFile.files.length
             ) {
-
-                throw new Error(
-                    data.error ||
-                    "Unable to analyze project."
+                showError(
+                    "Please select a ZIP file."
                 );
+
+                return;
             }
 
+            const file =
+                projectFile.files[0];
 
-            if (!data.result) {
+            const formData =
+                new FormData();
 
-                throw new Error(
-                    "No scan result was returned by the server."
+            formData.append(
+                "project",
+                file
+            );
+
+            setLoading(true);
+
+            errorBox.classList.add(
+                "hidden"
+            );
+
+            results.classList.add(
+                "hidden"
+            );
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/scan",
+                        {
+                            method: "POST",
+                            body: formData
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok ||
+                    !data.success) {
+
+                    throw new Error(
+                        data.error ||
+                        "Unable to analyze project."
+                    );
+                }
+
+                displayResults(
+                    data.result
                 );
+
+            }
+            catch (error) {
+
+                showError(
+                    error.message
+                );
+
+            }
+            finally {
+
+                setLoading(false);
             }
 
-
-            displayResults(
-                data.result
-            );
-
         }
-        catch (error) {
-
-            console.error(
-                "Scan error:",
-                error
-            );
-
-            showError(
-                error.message ||
-                "Something went wrong while analyzing the project."
-            );
-
-        }
-        finally {
-
-            setLoading(false);
-        }
-
-    });
+    );
 
 
     /* =====================================================
@@ -285,37 +262,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function displayResults(data) {
 
-        if (!data) {
-            showError(
-                "No results were received."
-            );
-
-            return;
-        }
-
-
-        results.classList.remove("hidden");
-
-
-        displayScore(
-            data.score ?? 0
+        results.classList.remove(
+            "hidden"
         );
 
+        displayScore(
+            data.score
+        );
 
         displayProjectInfo(
             data
         );
 
-
         displayCategories(
-            data.categories || {}
+            data.categories
         );
-
 
         displayFindings(
-            data.findings || []
+            data.findings
         );
-
 
         results.scrollIntoView({
             behavior: "smooth",
@@ -336,15 +301,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const statusElement =
             document.getElementById("scoreStatus");
 
-
-        if (!scoreElement || !statusElement) {
-            return;
-        }
-
-
         scoreElement.textContent =
             score;
-
 
         if (score >= 85) {
 
@@ -388,55 +346,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 "findingSummary"
             );
 
+        projectType.textContent =
+            data.project_type.join(
+                " • "
+            );
 
-        if (projectType) {
+        const s =
+            data.summary;
 
-            const types =
-                Array.isArray(data.project_type)
-                    ? data.project_type
-                    : data.project_type
-                        ? [data.project_type]
-                        : ["Unknown"];
-
-            projectType.textContent =
-                types.join(" • ");
-        }
-
-
-        if (summary) {
-
-            const s =
-                data.summary || {};
-
-
-            summary.innerHTML = `
-                <span>
-                    Critical:
-                    <strong>${s.critical ?? 0}</strong>
-                </span>
-
-                &nbsp; | &nbsp;
-
-                <span>
-                    High:
-                    <strong>${s.high ?? 0}</strong>
-                </span>
-
-                &nbsp; | &nbsp;
-
-                <span>
-                    Medium:
-                    <strong>${s.medium ?? 0}</strong>
-                </span>
-
-                &nbsp; | &nbsp;
-
-                <span>
-                    Low:
-                    <strong>${s.low ?? 0}</strong>
-                </span>
-            `;
-        }
+        summary.innerHTML = `
+            <span>
+                Critical: <strong>${s.critical}</strong>
+            </span>
+            &nbsp; | &nbsp;
+            <span>
+                High: <strong>${s.high}</strong>
+            </span>
+            &nbsp; | &nbsp;
+            <span>
+                Medium: <strong>${s.medium}</strong>
+            </span>
+            &nbsp; | &nbsp;
+            <span>
+                Low: <strong>${s.low}</strong>
+            </span>
+        `;
     }
 
 
@@ -451,78 +385,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 "categoryGrid"
             );
 
-
-        if (!grid) {
-            return;
-        }
-
-
         grid.innerHTML = "";
 
+        Object.entries(categories)
+            .forEach(
+                ([category, score]) => {
 
-        if (
-            !categories ||
-            Object.keys(categories).length === 0
-        ) {
+                    const card =
+                        document.createElement(
+                            "div"
+                        );
 
-            grid.innerHTML = `
-                <div class="category-card">
-                    No category scores available.
-                </div>
-            `;
+                    card.className =
+                        "category-card";
 
-            return;
-        }
+                    card.innerHTML = `
+                        <div class="category-top">
+                            <span>
+                                ${escapeHTML(category)}
+                            </span>
 
+                            <span class="category-score">
+                                ${score}/100
+                            </span>
+                        </div>
 
-        Object.entries(categories).forEach(
-            ([category, score]) => {
+                        <div class="progress">
+                            <div
+                                class="progress-bar"
+                                style="width: ${score}%"
+                            ></div>
+                        </div>
+                    `;
 
-                const card =
-                    document.createElement("div");
-
-
-                card.className =
-                    "category-card";
-
-
-                const safeScore =
-                    Math.max(
-                        0,
-                        Math.min(
-                            100,
-                            Number(score) || 0
-                        )
+                    grid.appendChild(
+                        card
                     );
-
-
-                card.innerHTML = `
-                    <div class="category-top">
-
-                        <span>
-                            ${escapeHTML(category)}
-                        </span>
-
-                        <span class="category-score">
-                            ${safeScore}/100
-                        </span>
-
-                    </div>
-
-                    <div class="progress">
-
-                        <div
-                            class="progress-bar"
-                            style="width: ${safeScore}%"
-                        ></div>
-
-                    </div>
-                `;
-
-
-                grid.appendChild(card);
-            }
-        );
+                }
+            );
     }
 
 
@@ -537,23 +437,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 "findingsContainer"
             );
 
-
-        if (!container) {
-            return;
-        }
-
-
         container.innerHTML = "";
 
-
-        if (
-            !Array.isArray(findings) ||
-            findings.length === 0
-        ) {
+        if (!findings.length) {
 
             container.innerHTML = `
                 <div class="finding">
-
                     <div class="finding-title">
                         All checks passed
                     </div>
@@ -562,98 +451,68 @@ document.addEventListener("DOMContentLoaded", () => {
                         No major deployment-readiness
                         issues were detected.
                     </p>
-
                 </div>
             `;
 
             return;
         }
 
-
         findings.forEach(
             finding => {
 
                 const element =
-                    document.createElement("div");
-
-
-                const severity =
-                    String(
-                        finding.severity || "low"
-                    ).toLowerCase();
-
+                    document.createElement(
+                        "div"
+                    );
 
                 element.className =
-                    `finding ${severity}`;
-
+                    `finding ${finding.severity}`;
 
                 element.innerHTML = `
-
                     <div class="finding-header">
 
                         <div class="finding-title">
-
                             ${escapeHTML(
-                                finding.title ||
-                                "Deployment finding"
+                                finding.title
                             )}
-
                         </div>
 
-
                         <span
-                            class="severity ${escapeHTML(
-                                severity
-                            )}"
+                            class="severity ${finding.severity}"
                         >
-
                             ${escapeHTML(
-                                severity
+                                finding.severity
                             )}
-
                         </span>
 
                     </div>
 
-
                     <div class="finding-category">
-
                         ${escapeHTML(
-                            finding.category ||
-                            "General"
+                            finding.category
                         )}
-
                     </div>
 
-
                     <p>
-
                         <strong>
                             Impact:
                         </strong>
 
                         ${escapeHTML(
-                            finding.impact ||
-                            "No impact information provided."
+                            finding.impact
                         )}
-
                     </p>
 
-
                     <p>
-
                         <strong>
                             Recommendation:
                         </strong>
 
                         ${escapeHTML(
-                            finding.recommendation ||
-                            "No recommendation provided."
+                            finding.recommendation
                         )}
-
                     </p>
                 `;
-
 
                 container.appendChild(
                     element
@@ -675,10 +534,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 "hidden"
             );
 
-
             scanButton.disabled =
                 true;
-
 
             scanButton.textContent =
                 "Analyzing...";
@@ -690,10 +547,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 "hidden"
             );
 
-
             scanButton.disabled =
                 !projectFile.files.length;
-
 
             scanButton.textContent =
                 "Analyze Project";
@@ -709,7 +564,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         errorBox.textContent =
             message;
-
 
         errorBox.classList.remove(
             "hidden"
@@ -748,58 +602,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     /* =====================================================
-       THEME TOGGLE
+       THEME
     ====================================================== */
 
-    if (themeToggle) {
+    themeToggle.addEventListener(
+        "click",
+        () => {
 
-        const savedTheme =
-            localStorage.getItem("theme");
-
-
-        if (savedTheme === "dark") {
-
-            /*
-             * This assumes themeToggle is a checkbox.
-             */
-            themeToggle.checked = true;
-
-            document.body.classList.add(
+            document.body.classList.toggle(
                 "dark"
             );
 
-        }
-        else {
-
-            document.body.classList.remove(
-                "dark"
-            );
-        }
-
-
-        themeToggle.addEventListener(
-            "change",
-            () => {
-
-                const dark =
-                    themeToggle.checked;
-
-
-                document.body.classList.toggle(
-                    "dark",
-                    dark
+            const dark =
+                document.body.classList.contains(
+                    "dark"
                 );
 
-
-                localStorage.setItem(
-                    "theme",
-                    dark
-                        ? "dark"
-                        : "light"
-                );
-
-            }
-        );
-    }
+            themeToggle.textContent =
+                dark
+                    ? "Light Mode"
+                    : "Dark Mode";
+        }
+    );
 
 });
