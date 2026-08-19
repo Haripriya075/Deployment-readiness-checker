@@ -14,9 +14,9 @@ DeployCheck provides a readiness score, category-wise analysis, severity levels,
 
 DeployCheck is deployed as a web application and can be accessed through the Render deployment URL.
 
-**Live Application:** `YOUR_RENDER_URL`
+**Live Application:** 
 
-![DeployCheck Live Deployment](YOUR_RENDER_SCREENSHOT_URL)
+
 
 ---
 
@@ -291,7 +291,6 @@ gunicorn app:app
 
 The application can be deployed using platforms such as Render.
 
-![Render Deployment](YOUR_RENDER_DEPLOYMENT_SCREENSHOT_URL)
 
 ---
 
