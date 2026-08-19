@@ -2,58 +2,59 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>DeployCheck | Deployment Readiness Intelligence</title>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        DeployCheck | Deployment Readiness Analyzer
+    </title>
 
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='style.css') }}"
     >
+
 </head>
 
 <body>
 
     <!-- =====================================================
-         BACKGROUND
+         HEADER
     ====================================================== -->
 
-    <div class="background-grid"></div>
-    <div class="glow glow-one"></div>
-    <div class="glow glow-two"></div>
-
-
-    <!-- =====================================================
-         NAVBAR
-    ====================================================== -->
-
-    <header class="navbar">
+    <header class="header">
 
         <div class="brand">
 
-            <div class="brand-mark">
-                <span></span>
-                <span></span>
-                <span></span>
+            <div class="brand-icon">
+                DC
             </div>
 
             <div>
-                <div class="logo">
-                    DeployCheck
-                </div>
 
-                <div class="brand-subtitle">
-                    Deployment Intelligence
-                </div>
+                <h1>
+                    DeployCheck
+                </h1>
+
+                <span>
+                    Deployment Readiness Analyzer
+                </span>
+
             </div>
 
         </div>
 
-        <div class="nav-status">
-            <span class="status-dot"></span>
-            Scanner Online
-        </div>
+        <button
+            id="themeToggle"
+            class="theme-button"
+        >
+            Dark Mode
+        </button>
 
     </header>
 
@@ -64,90 +65,164 @@
 
     <main class="container">
 
-
-        <!-- =================================================
-             HERO
-        ================================================== -->
-
         <section class="hero">
 
-            <div class="hero-content">
+            <div class="hero-badge">
+                PRE-DEPLOYMENT VALIDATION
+            </div>
 
-                <div class="eyebrow">
-                    <span class="eyebrow-line"></span>
-                    DEVELOPER DEPLOYMENT ANALYZER
+            <h2>
+                Is your project ready for deployment?
+            </h2>
+
+            <p>
+                Upload your project ZIP and DeployCheck
+                analyzes common security, configuration,
+                dependency, testing and deployment issues.
+            </p>
+
+        </section>
+
+
+        <!-- =================================================
+             UPLOAD
+        ================================================== -->
+
+        <section class="upload-card">
+
+            <div
+                id="dropZone"
+                class="drop-zone"
+            >
+
+                <div class="upload-icon">
+                    ↑
                 </div>
 
-                <h1>
-                    Deploy smarter.
-                    <span>Deploy safer.</span>
-                </h1>
+                <h3>
+                    Upload Project ZIP
+                </h3>
 
-                <p class="hero-description">
-                    Analyze your project before production.
-                    Detect configuration issues, dependency problems,
-                    exposed secrets, missing tests and deployment risks.
+                <p>
+                    Drag & drop your ZIP file here
+                    or select a file
                 </p>
 
+                <input
+                    type="file"
+                    id="projectFile"
+                    accept=".zip"
+                    hidden
+                >
 
-                <div class="hero-features">
+                <button
+                    id="selectButton"
+                    class="primary-button"
+                >
+                    Select ZIP File
+                </button>
 
-                    <div class="hero-feature">
-                        <span class="feature-check">✓</span>
-                        Project Analysis
+                <div
+                    id="fileName"
+                    class="file-name"
+                >
+                </div>
+
+            </div>
+
+            <button
+                id="scanButton"
+                class="scan-button"
+                disabled
+            >
+                Analyze Project
+            </button>
+
+            <div
+                id="loading"
+                class="loading hidden"
+            >
+                <div class="spinner"></div>
+
+                <span>
+                    Analyzing project...
+                </span>
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             ERROR
+        ================================================== -->
+
+        <div
+            id="errorBox"
+            class="error-box hidden"
+        >
+        </div>
+
+
+        <!-- =================================================
+             RESULTS
+        ================================================== -->
+
+        <section
+            id="results"
+            class="results hidden"
+        >
+
+            <!-- SCORE -->
+
+            <div class="score-section">
+
+                <div class="score-card">
+
+                    <div class="score-label">
+                        DEPLOYMENT READINESS
                     </div>
 
-                    <div class="hero-feature">
-                        <span class="feature-check">✓</span>
-                        Security Scan
+                    <div
+                        id="score"
+                        class="score"
+                    >
+                        0
                     </div>
 
-                    <div class="hero-feature">
-                        <span class="feature-check">✓</span>
-                        Readiness Score
+                    <div class="score-out-of">
+                        / 100
+                    </div>
+
+                    <div
+                        id="scoreStatus"
+                        class="score-status"
+                    >
+                        Analyzing
                     </div>
 
                 </div>
 
+                <div class="project-info">
 
-                <!-- =================================================
-                     PIPELINE
-                ================================================== -->
-
-                <div class="mini-pipeline" id="pipeline">
-
-                    <div
-                        id="stepUpload"
-                        class="pipeline-step active"
-                    >
-                        <span>01</span>
-                        Upload
+                    <div class="info-title">
+                        PROJECT TYPE
                     </div>
 
                     <div
-                        id="connectorUpload"
-                        class="pipeline-connector"
-                    ></div>
-
-                    <div
-                        id="stepAnalyze"
-                        class="pipeline-step"
+                        id="projectType"
+                        class="project-type"
                     >
-                        <span>02</span>
-                        Analyze
+                        -
+                    </div>
+
+                    <div class="info-title">
+                        FINDINGS
                     </div>
 
                     <div
-                        id="connectorAnalyze"
-                        class="pipeline-connector"
-                    ></div>
-
-                    <div
-                        id="stepDeploy"
-                        class="pipeline-step"
+                        id="findingSummary"
+                        class="finding-summary"
                     >
-                        <span>03</span>
-                        Deploy
                     </div>
 
                 </div>
@@ -156,360 +231,48 @@
 
 
             <!-- =================================================
-                 UPLOAD PANEL
+                 CATEGORY SCORES
             ================================================== -->
 
-            <div class="upload-wrapper">
-
-                <div class="upload-glow"></div>
-
-                <div class="upload-card">
-
-                    <div class="upload-top">
-
-                        <span class="scanner-pill">
-                            <span></span>
-                            READY TO SCAN
-                        </span>
-
-                        <span class="zip-label">
-                            .ZIP
-                        </span>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         DROP ZONE
-                    ================================================== -->
-
-                    <div
-                        id="dropZone"
-                        class="drop-zone"
-                    >
-
-                        <div class="upload-icon">
-
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                            >
-                                <path d="M12 16V4" />
-                                <path d="M7 9l5-5 5 5" />
-                                <path d="M5 20h14" />
-                            </svg>
-
-                        </div>
-
-                        <h2>
-                            Drop your project
-                        </h2>
-
-                        <p>
-                            Upload a ZIP archive of your project
-                            to begin deployment analysis.
-                        </p>
-
-                        <label
-                            for="projectFile"
-                            class="browse-btn"
-                        >
-                            Browse Project
-                        </label>
-
-                        <input
-                            type="file"
-                            id="projectFile"
-                            accept=".zip"
-                        >
-
-                        <div
-                            id="fileName"
-                            class="file-name"
-                        >
-                            No project selected
-                        </div>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         UPLOAD FOOTER
-                    ================================================== -->
-
-                    <div class="upload-footer">
-
-                        <div class="upload-info">
-                            <span>ZIP archive</span>
-                            <span>•</span>
-                            <span>Project files</span>
-                        </div>
-
-                        <button
-                            id="scanBtn"
-                            class="scan-btn"
-                            type="button"
-                        >
-                            <span class="scan-icon">◉</span>
-                            <span>Analyze Project</span>
-
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <path d="M5 12h14"></path>
-                                <path d="M13 6l6 6-6 6"></path>
-                            </svg>
-
-                        </button>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         MESSAGE
-                    ================================================== -->
-
-                    <div
-                        id="message"
-                        class="message"
-                    ></div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             REPORT
-        ================================================== -->
-
-        <section
-            id="reportSection"
-            class="report-section hidden"
-        >
-
             <div class="section-heading">
 
-                <div>
-
-                    <div class="section-kicker">
-                        DEPLOYMENT ANALYSIS
-                    </div>
-
-                    <h2>
-                        Deployment Readiness Report
-                    </h2>
-
-                </div>
+                <h2>
+                    Readiness Analysis
+                </h2>
 
                 <p>
-                    Results generated from your uploaded project.
+                    Category-wise deployment readiness
                 </p>
 
             </div>
-
 
             <div
-                id="report"
-                class="report"
-            ></div>
+                id="categoryGrid"
+                class="category-grid"
+            >
+            </div>
 
-        </section>
 
+            <!-- =================================================
+                 FINDINGS
+            ================================================== -->
 
-        <!-- =================================================
-             DEPLOYMENT READY
-        ================================================== -->
+            <div class="section-heading findings-heading">
 
-        <section
-            id="deploySection"
-            class="deploy-section hidden"
-        >
-
-            <div class="section-heading">
-
-                <div>
-
-                    <div class="section-kicker">
-                        NEXT STEP
-                    </div>
-
-                    <h2>
-                        Project ready for deployment
-                    </h2>
-
-                </div>
+                <h2>
+                    Findings & Recommendations
+                </h2>
 
                 <p>
-                    Review the readiness report before deploying
-                    your project to a production environment.
+                    Review these issues before deployment.
                 </p>
 
             </div>
 
-            <div class="deploy-card">
-
-                <div class="deploy-icon">
-                    ✓
-                </div>
-
-                <div>
-                    <h3>
-                        Analysis Complete
-                    </h3>
-
-                    <p>
-                        Your deployment-readiness analysis has been
-                        completed successfully.
-                    </p>
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             WHAT WE CHECK
-        ================================================== -->
-
-        <section class="checks-section">
-
-            <div class="section-heading">
-
-                <div>
-
-                    <div class="section-kicker">
-                        ANALYSIS ENGINE
-                    </div>
-
-                    <h2>
-                        What DeployCheck examines
-                    </h2>
-
-                </div>
-
-                <p>
-                    A pre-deployment health check for
-                    the most common project risks.
-                </p>
-
-            </div>
-
-
-            <div class="check-grid">
-
-
-                <div class="check-card card-blue">
-
-                    <div class="check-number">
-                        01
-                    </div>
-
-                    <div class="check-icon">
-                        ◇
-                    </div>
-
-                    <h3>
-                        Project Structure
-                    </h3>
-
-                    <p>
-                        Detect important project files,
-                        folders and documentation.
-                    </p>
-
-                    <div class="card-status">
-                        STRUCTURE
-                    </div>
-
-                </div>
-
-
-                <div class="check-card card-purple">
-
-                    <div class="check-number">
-                        02
-                    </div>
-
-                    <div class="check-icon">
-                        ◈
-                    </div>
-
-                    <h3>
-                        Dependencies
-                    </h3>
-
-                    <p>
-                        Check whether package and dependency
-                        configuration is available.
-                    </p>
-
-                    <div class="card-status">
-                        PACKAGES
-                    </div>
-
-                </div>
-
-
-                <div class="check-card card-red">
-
-                    <div class="check-number">
-                        03
-                    </div>
-
-                    <div class="check-icon">
-                        !
-                    </div>
-
-                    <h3>
-                        Security
-                    </h3>
-
-                    <p>
-                        Scan source files for potentially
-                        exposed credentials and secrets.
-                    </p>
-
-                    <div class="card-status">
-                        SECURITY
-                    </div>
-
-                </div>
-
-
-                <div class="check-card card-green">
-
-                    <div class="check-number">
-                        04
-                    </div>
-
-                    <div class="check-icon">
-                        ✓
-                    </div>
-
-                    <h3>
-                        Configuration
-                    </h3>
-
-                    <p>
-                        Review environment variables,
-                        debug settings and testing readiness.
-                    </p>
-
-                    <div class="card-status">
-                        RUNTIME
-                    </div>
-
-                </div>
-
+            <div
+                id="findingsContainer"
+                class="findings-container"
+            >
             </div>
 
         </section>
@@ -517,19 +280,16 @@
     </main>
 
 
-    <!-- =====================================================
-         FOOTER
-    ====================================================== -->
+    <footer>
 
-    <footer class="footer">
+        <p>
+            DeployCheck — Pre-deployment validation tool
+        </p>
 
-        <div>
-            DeployCheck
-        </div>
-
-        <span>
-            Deployment readiness analysis tool
-        </span>
+        <p>
+            Identifies potential issues; does not guarantee
+            successful deployment.
+        </p>
 
     </footer>
 
