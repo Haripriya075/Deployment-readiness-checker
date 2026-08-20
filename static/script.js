@@ -44,16 +44,13 @@ document.addEventListener("DOMContentLoaded", () => {
         "change",
         () => {
 
-            if (
-                projectFile.files.length === 0
-            ) {
+            if (!projectFile.files.length) {
                 return;
             }
 
-            const file =
-                projectFile.files[0];
-
-            handleFile(file);
+            handleFile(
+                projectFile.files[0]
+            );
         }
     );
 
@@ -62,44 +59,40 @@ document.addEventListener("DOMContentLoaded", () => {
        DRAG & DROP
     ====================================================== */
 
-    [
-        "dragenter",
-        "dragover"
-    ].forEach(eventName => {
+    ["dragenter", "dragover"].forEach(
+        eventName => {
 
-        dropZone.addEventListener(
-            eventName,
-            event => {
+            dropZone.addEventListener(
+                eventName,
+                event => {
 
-                event.preventDefault();
+                    event.preventDefault();
 
-                dropZone.classList.add(
-                    "dragover"
-                );
-            }
-        );
-
-    });
+                    dropZone.classList.add(
+                        "dragover"
+                    );
+                }
+            );
+        }
+    );
 
 
-    [
-        "dragleave",
-        "drop"
-    ].forEach(eventName => {
+    ["dragleave", "drop"].forEach(
+        eventName => {
 
-        dropZone.addEventListener(
-            eventName,
-            event => {
+            dropZone.addEventListener(
+                eventName,
+                event => {
 
-                event.preventDefault();
+                    event.preventDefault();
 
-                dropZone.classList.remove(
-                    "dragover"
-                );
-            }
-        );
-
-    });
+                    dropZone.classList.remove(
+                        "dragover"
+                    );
+                }
+            );
+        }
+    );
 
 
     dropZone.addEventListener(
@@ -113,8 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const file =
-                files[0];
+            const file = files[0];
 
             if (
                 !file.name
@@ -129,8 +121,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            projectFile.files =
-                files;
+            try {
+
+                projectFile.files = files;
+
+            } catch (error) {
+
+                console.warn(
+                    "Could not assign dropped file:",
+                    error
+                );
+            }
 
             handleFile(file);
         }
@@ -151,6 +152,17 @@ document.addEventListener("DOMContentLoaded", () => {
             "hidden"
         );
 
+        if (!file) {
+
+            showError(
+                "Please select a ZIP file."
+            );
+
+            scanButton.disabled = true;
+
+            return;
+        }
+
         if (
             !file.name
                 .toLowerCase()
@@ -159,6 +171,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             showError(
                 "Only ZIP files are supported."
+            );
+
+            scanButton.disabled = true;
+
+            return;
+        }
+
+        /* 50 MB client-side validation */
+
+        const maxSize =
+            50 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+
+            showError(
+                "ZIP file must be smaller than 50 MB."
             );
 
             scanButton.disabled = true;
@@ -181,9 +209,8 @@ document.addEventListener("DOMContentLoaded", () => {
         "click",
         async () => {
 
-            if (
-                !projectFile.files.length
-            ) {
+            if (!projectFile.files.length) {
+
                 showError(
                     "Please select a ZIP file."
                 );
@@ -193,6 +220,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const file =
                 projectFile.files[0];
+
+            if (
+                !file.name
+                    .toLowerCase()
+                    .endsWith(".zip")
+            ) {
+
+                showError(
+                    "Only ZIP files are supported."
+                );
+
+                return;
+            }
 
             const formData =
                 new FormData();
@@ -223,11 +263,59 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     );
 
-                const data =
-                    await response.json();
 
-                if (!response.ok ||
-                    !data.success) {
+                /* =========================================
+                   SAFELY READ SERVER RESPONSE
+                ========================================== */
+
+                const contentType =
+                    response.headers.get(
+                        "content-type"
+                    ) || "";
+
+
+                let data;
+
+
+                if (
+                    contentType.includes(
+                        "application/json"
+                    )
+                ) {
+
+                    data =
+                        await response.json();
+
+                }
+                else {
+
+                    /*
+                     Flask returned HTML or
+                     another non-JSON response.
+                    */
+
+                    const text =
+                        await response.text();
+
+                    console.error(
+                        "Server returned non-JSON response:",
+                        text
+                    );
+
+                    throw new Error(
+                        "Server returned an unexpected response. Please check the Flask terminal for the error."
+                    );
+                }
+
+
+                /* =========================================
+                   CHECK SERVER RESULT
+                ========================================== */
+
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
 
                     throw new Error(
                         data.error ||
@@ -235,18 +323,41 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
                 }
 
+
+                /* =========================================
+                   CHECK RESULT OBJECT
+                ========================================== */
+
+                if (
+                    !data.result
+                ) {
+
+                    throw new Error(
+                        "The server returned no scan results."
+                    );
+                }
+
+
                 displayResults(
                     data.result
                 );
 
             }
+
             catch (error) {
 
+                console.error(
+                    "Scan error:",
+                    error
+                );
+
                 showError(
-                    error.message
+                    error.message ||
+                    "Unable to analyze the project."
                 );
 
             }
+
             finally {
 
                 setLoading(false);
@@ -266,21 +377,27 @@ document.addEventListener("DOMContentLoaded", () => {
             "hidden"
         );
 
+
         displayScore(
-            data.score
+            data.score,
+            data.readiness
         );
+
 
         displayProjectInfo(
             data
         );
 
+
         displayCategories(
-            data.categories
+            data.categories || {}
         );
 
+
         displayFindings(
-            data.findings
+            data.findings || []
         );
+
 
         results.scrollIntoView({
             behavior: "smooth",
@@ -293,39 +410,73 @@ document.addEventListener("DOMContentLoaded", () => {
        SCORE
     ====================================================== */
 
-    function displayScore(score) {
+    function displayScore(
+        score,
+        readiness
+    ) {
 
         const scoreElement =
-            document.getElementById("score");
+            document.getElementById(
+                "score"
+            );
 
         const statusElement =
-            document.getElementById("scoreStatus");
+            document.getElementById(
+                "scoreStatus"
+            );
+
+
+        const numericScore =
+            Number(score) || 0;
+
 
         scoreElement.textContent =
-            score;
+            numericScore;
 
-        if (score >= 85) {
 
-            statusElement.textContent =
-                "Ready for deployment";
+        /*
+         * If the updated Flask backend
+         * sends readiness, use it.
+         */
 
-        }
-        else if (score >= 70) {
-
-            statusElement.textContent =
-                "Mostly ready";
-
-        }
-        else if (score >= 50) {
+        if (readiness) {
 
             statusElement.textContent =
-                "Needs improvement";
+                readiness;
+
+            return;
+        }
+
+
+        /*
+         * Fallback for old backend.
+         */
+
+        if (numericScore >= 90) {
+
+            statusElement.textContent =
+                "Excellent";
 
         }
+
+        else if (numericScore >= 75) {
+
+            statusElement.textContent =
+                "Good";
+
+        }
+
+        else if (numericScore >= 50) {
+
+            statusElement.textContent =
+                "Needs Improvement";
+
+        }
+
         else {
 
             statusElement.textContent =
-                "High deployment risk";
+                "Not Deployment Ready";
         }
     }
 
@@ -346,29 +497,61 @@ document.addEventListener("DOMContentLoaded", () => {
                 "findingSummary"
             );
 
+
+        const types =
+            Array.isArray(
+                data.project_type
+            )
+                ? data.project_type
+                : ["Unknown"];
+
+
         projectType.textContent =
-            data.project_type.join(
-                " • "
-            );
+            types.join(" • ");
+
 
         const s =
-            data.summary;
+            data.summary || {};
+
+
+        const critical =
+            Number(s.critical) || 0;
+
+        const high =
+            Number(s.high) || 0;
+
+        const medium =
+            Number(s.medium) || 0;
+
+        const low =
+            Number(s.low) || 0;
+
 
         summary.innerHTML = `
             <span>
-                Critical: <strong>${s.critical}</strong>
+                Critical:
+                <strong>${critical}</strong>
             </span>
+
             &nbsp; | &nbsp;
+
             <span>
-                High: <strong>${s.high}</strong>
+                High:
+                <strong>${high}</strong>
             </span>
+
             &nbsp; | &nbsp;
+
             <span>
-                Medium: <strong>${s.medium}</strong>
+                Medium:
+                <strong>${medium}</strong>
             </span>
+
             &nbsp; | &nbsp;
+
             <span>
-                Low: <strong>${s.low}</strong>
+                Low:
+                <strong>${low}</strong>
             </span>
         `;
     }
@@ -378,45 +561,68 @@ document.addEventListener("DOMContentLoaded", () => {
        CATEGORY SCORES
     ====================================================== */
 
-    function displayCategories(categories) {
+    function displayCategories(
+        categories
+    ) {
 
         const grid =
             document.getElementById(
                 "categoryGrid"
             );
 
+
         grid.innerHTML = "";
+
 
         Object.entries(categories)
             .forEach(
                 ([category, score]) => {
+
+                    const numericScore =
+                        Math.max(
+                            0,
+                            Math.min(
+                                100,
+                                Number(score) || 0
+                            )
+                        );
+
 
                     const card =
                         document.createElement(
                             "div"
                         );
 
+
                     card.className =
                         "category-card";
 
+
                     card.innerHTML = `
                         <div class="category-top">
+
                             <span>
-                                ${escapeHTML(category)}
+                                ${escapeHTML(
+                                    category
+                                )}
                             </span>
 
                             <span class="category-score">
-                                ${score}/100
+                                ${numericScore}/100
                             </span>
+
                         </div>
 
                         <div class="progress">
+
                             <div
                                 class="progress-bar"
-                                style="width: ${score}%"
+                                style="width: ${numericScore}%"
                             ></div>
+
                         </div>
                     `;
+
 
                     grid.appendChild(
                         card
@@ -430,34 +636,70 @@ document.addEventListener("DOMContentLoaded", () => {
        FINDINGS
     ====================================================== */
 
-    function displayFindings(findings) {
+    function displayFindings(
+        findings
+    ) {
 
         const container =
             document.getElementById(
                 "findingsContainer"
             );
 
+
         container.innerHTML = "";
 
-        if (!findings.length) {
+
+        if (
+            !Array.isArray(findings) ||
+            findings.length === 0
+        ) {
 
             container.innerHTML = `
                 <div class="finding">
+
                     <div class="finding-title">
                         All checks passed
                     </div>
 
                     <p>
-                        No major deployment-readiness
+                        No deployment-readiness
                         issues were detected.
                     </p>
+
                 </div>
             `;
 
             return;
         }
 
-        findings.forEach(
+
+        /*
+         * Display Critical first,
+         * then High, Medium and Low.
+         */
+
+        const severityOrder = {
+            "Critical": 1,
+            "High": 2,
+            "Medium": 3,
+            "Low": 4
+        };
+
+
+        const sortedFindings =
+            [...findings].sort(
+                (a, b) => {
+
+                    return (
+                        (severityOrder[a.severity] || 99)
+                        -
+                        (severityOrder[b.severity] || 99)
+                    );
+                }
+            );
+
+
+        sortedFindings.forEach(
             finding => {
 
                 const element =
@@ -465,54 +707,74 @@ document.addEventListener("DOMContentLoaded", () => {
                         "div"
                     );
 
+
+                const severity =
+                    finding.severity || "Low";
+
+
                 element.className =
-                    `finding ${finding.severity}`;
+                    `finding ${severity}`;
+
 
                 element.innerHTML = `
                     <div class="finding-header">
 
                         <div class="finding-title">
                             ${escapeHTML(
-                                finding.title
+                                finding.title ||
+                                "Issue detected"
                             )}
                         </div>
 
                         <span
-                            class="severity ${finding.severity}"
+                            class="severity ${escapeHTML(
+                                severity
+                            )}"
                         >
                             ${escapeHTML(
-                                finding.severity
+                                severity
                             )}
                         </span>
 
                     </div>
 
+
                     <div class="finding-category">
                         ${escapeHTML(
-                            finding.category
+                            finding.category ||
+                            "General"
                         )}
                     </div>
 
+
                     <p>
+
                         <strong>
                             Impact:
                         </strong>
 
                         ${escapeHTML(
-                            finding.impact
+                            finding.impact ||
+                            "No impact description available."
                         )}
+
                     </p>
 
+
                     <p>
+
                         <strong>
                             Recommendation:
                         </strong>
 
                         ${escapeHTML(
-                            finding.recommendation
+                            finding.recommendation ||
+                            "Review this issue before deployment."
                         )}
+
                     </p>
                 `;
+
 
                 container.appendChild(
                     element
@@ -526,7 +788,9 @@ document.addEventListener("DOMContentLoaded", () => {
        LOADING
     ====================================================== */
 
-    function setLoading(isLoading) {
+    function setLoading(
+        isLoading
+    ) {
 
         if (isLoading) {
 
@@ -534,21 +798,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 "hidden"
             );
 
+
             scanButton.disabled =
                 true;
+
 
             scanButton.textContent =
                 "Analyzing...";
 
         }
+
         else {
 
             loading.classList.add(
                 "hidden"
             );
 
+
             scanButton.disabled =
                 !projectFile.files.length;
+
 
             scanButton.textContent =
                 "Analyze Project";
@@ -560,14 +829,23 @@ document.addEventListener("DOMContentLoaded", () => {
        ERROR
     ====================================================== */
 
-    function showError(message) {
+    function showError(
+        message
+    ) {
 
         errorBox.textContent =
             message;
 
+
         errorBox.classList.remove(
             "hidden"
         );
+
+
+        errorBox.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+        });
     }
 
 
@@ -575,9 +853,13 @@ document.addEventListener("DOMContentLoaded", () => {
        ESCAPE HTML
     ====================================================== */
 
-    function escapeHTML(value) {
+    function escapeHTML(
+        value
+    ) {
 
-        return String(value)
+        return String(
+            value ?? ""
+        )
             .replace(
                 /&/g,
                 "&amp;"
@@ -613,10 +895,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 "dark"
             );
 
+
             const dark =
                 document.body.classList.contains(
                     "dark"
                 );
+
 
             themeToggle.textContent =
                 dark
