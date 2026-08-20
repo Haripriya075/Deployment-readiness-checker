@@ -17,6 +17,21 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 
 # =========================================================
+# IGNORED DIRECTORIES
+# =========================================================
+
+IGNORED_DIRS = {
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "uploads",
+    "scanned_projects"
+}
+
+
+# =========================================================
 # HOME
 # =========================================================
 
@@ -30,18 +45,14 @@ def home():
 # =========================================================
 
 def detect_project_type(project_path):
+
     files = []
 
     for root, dirs, filenames in os.walk(project_path):
+
         dirs[:] = [
             d for d in dirs
-            if d not in {
-                ".git",
-                "__pycache__",
-                "node_modules",
-                ".venv",
-                "venv"
-            }
+            if d not in IGNORED_DIRS
         ]
 
         for filename in filenames:
@@ -49,64 +60,83 @@ def detect_project_type(project_path):
 
     detected = []
 
+    # Python
     if "requirements.txt" in files:
         detected.append("Python")
 
+    # Node.js
     if "package.json" in files:
         detected.append("Node.js")
 
+    # Django
     if "manage.py" in files:
         detected.append("Django")
 
+    # Docker
     if "dockerfile" in files:
         detected.append("Docker")
 
-    # Look for framework names in Python files
+    # Flask / FastAPI
     for root, dirs, filenames in os.walk(project_path):
+
         dirs[:] = [
             d for d in dirs
-            if d not in {
-                ".git",
-                "__pycache__",
-                "node_modules",
-                ".venv",
-                "venv"
-            }
+            if d not in IGNORED_DIRS
         ]
 
         for filename in filenames:
-            if filename.endswith(".py"):
-                try:
-                    filepath = os.path.join(root, filename)
 
-                    with open(
-                        filepath,
-                        "r",
-                        encoding="utf-8",
-                        errors="ignore"
-                    ) as f:
-                        content = f.read()
+            if not filename.endswith(".py"):
+                continue
 
-                    if "from flask" in content or "import flask" in content:
-                        detected.append("Flask")
+            try:
 
-                    if "from fastapi" in content or "import fastapi" in content:
-                        detected.append("FastAPI")
+                filepath = os.path.join(
+                    root,
+                    filename
+                )
 
-                except Exception:
-                    pass
+                with open(
+                    filepath,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore"
+                ) as f:
 
-    # JavaScript frameworks
-    package_path = find_file(project_path, "package.json")
+                    content = f.read()
+
+                if (
+                    "from flask" in content
+                    or "import flask" in content
+                ):
+                    detected.append("Flask")
+
+                if (
+                    "from fastapi" in content
+                    or "import fastapi" in content
+                ):
+                    detected.append("FastAPI")
+
+            except Exception:
+                pass
+
+    # Frontend frameworks
+    package_path = find_file(
+        project_path,
+        "package.json"
+    )
 
     if package_path:
+
         try:
+
             with open(
                 package_path,
                 "r",
                 encoding="utf-8",
                 errors="ignore"
             ) as f:
+
                 content = f.read().lower()
 
             if '"react"' in content:
@@ -127,7 +157,9 @@ def detect_project_type(project_path):
     if not detected:
         return ["Unknown"]
 
-    return list(dict.fromkeys(detected))
+    return list(
+        dict.fromkeys(detected)
+    )
 
 
 # =========================================================
@@ -135,21 +167,21 @@ def detect_project_type(project_path):
 # =========================================================
 
 def find_file(project_path, filename):
+
     for root, dirs, files in os.walk(project_path):
+
         dirs[:] = [
             d for d in dirs
-            if d not in {
-                ".git",
-                "__pycache__",
-                "node_modules",
-                ".venv",
-                "venv"
-            }
+            if d not in IGNORED_DIRS
         ]
 
         for file in files:
+
             if file.lower() == filename.lower():
-                return os.path.join(root, file)
+                return os.path.join(
+                    root,
+                    file
+                )
 
     return None
 
@@ -158,7 +190,15 @@ def find_file(project_path, filename):
 # ADD FINDING
 # =========================================================
 
-def add_finding(findings, category, severity, title, impact, recommendation):
+def add_finding(
+    findings,
+    category,
+    severity,
+    title,
+    impact,
+    recommendation
+):
+
     findings.append({
         "category": category,
         "severity": severity,
@@ -172,11 +212,18 @@ def add_finding(findings, category, severity, title, impact, recommendation):
 # README CHECK
 # =========================================================
 
-def check_readme(project_path, findings):
+def check_readme(
+    project_path,
+    findings
+):
 
-    readme = find_file(project_path, "README.md")
+    readme = find_file(
+        project_path,
+        "README.md"
+    )
 
     if not readme:
+
         add_finding(
             findings,
             "Project Structure",
@@ -185,18 +232,22 @@ def check_readme(project_path, findings):
             "Developers may not have clear instructions for understanding or running the project.",
             "Add a README.md containing project description, installation steps, usage instructions, environment variables and deployment instructions."
         )
+
         return False
 
     try:
+
         with open(
             readme,
             "r",
             encoding="utf-8",
             errors="ignore"
         ) as f:
+
             content = f.read().strip()
 
         if len(content) < 50:
+
             add_finding(
                 findings,
                 "Project Structure",
@@ -205,11 +256,13 @@ def check_readme(project_path, findings):
                 "The project may lack important setup and usage documentation.",
                 "Expand the README with project purpose, installation, configuration, usage and deployment information."
             )
+
             return False
 
         return True
 
     except Exception:
+
         return False
 
 
@@ -217,13 +270,22 @@ def check_readme(project_path, findings):
 # DEPENDENCY CHECK
 # =========================================================
 
-def check_dependencies(project_path, findings):
+def check_dependencies(
+    project_path,
+    findings
+):
 
-    requirements = find_file(project_path, "requirements.txt")
-    package_json = find_file(project_path, "package.json")
+    requirements = find_file(
+        project_path,
+        "requirements.txt"
+    )
+
+    package_json = find_file(
+        project_path,
+        "package.json"
+    )
 
     if requirements or package_json:
-
         return True
 
     add_finding(
@@ -242,10 +304,20 @@ def check_dependencies(project_path, findings):
 # ENVIRONMENT CONFIGURATION
 # =========================================================
 
-def check_environment(project_path, findings):
+def check_environment(
+    project_path,
+    findings
+):
 
-    env_file = find_file(project_path, ".env")
-    env_example = find_file(project_path, ".env.example")
+    env_file = find_file(
+        project_path,
+        ".env"
+    )
+
+    env_example = find_file(
+        project_path,
+        ".env.example"
+    )
 
     if env_file and not env_example:
 
@@ -276,67 +348,196 @@ def check_environment(project_path, findings):
 
 
 # =========================================================
+# GITIGNORE CHECK
+# =========================================================
+
+def check_gitignore(
+    project_path,
+    findings
+):
+
+    gitignore_path = find_file(
+        project_path,
+        ".gitignore"
+    )
+
+    env_file = find_file(
+        project_path,
+        ".env"
+    )
+
+    if not gitignore_path:
+
+        add_finding(
+            findings,
+            "Security",
+            "High",
+            ".gitignore not found",
+            "Without a .gitignore, secrets, dependencies, and local build artifacts can be committed directly to version control.",
+            "Add a .gitignore that excludes .env, node_modules/, __pycache__/, and other local-only files."
+        )
+
+        return False
+
+    try:
+
+        with open(
+            gitignore_path,
+            "r",
+            encoding="utf-8",
+            errors="ignore"
+        ) as f:
+
+            content = f.read()
+
+    except Exception:
+
+        content = ""
+
+    ignores_env = bool(
+        re.search(
+            r"(?m)^\s*\.env\b",
+            content
+        )
+    )
+
+    if env_file and not ignores_env:
+
+        add_finding(
+            findings,
+            "Security",
+            "Critical",
+            ".env file is not excluded by .gitignore",
+            "A real .env file containing credentials can be committed to source control and exposed publicly.",
+            "Add '.env' to .gitignore and remove any committed .env file from version control history."
+        )
+
+        return False
+
+    return True
+
+
+# =========================================================
 # SECRET DETECTION
 # =========================================================
 
-def check_secrets(project_path, findings):
+def check_secrets(
+    project_path,
+    findings
+):
 
-    secret_patterns = [
+    quoted_patterns = [
+
         (
             r"(?i)(api[_-]?key)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
             "Possible API key"
         ),
+
         (
             r"(?i)(password)\s*[:=]\s*['\"][^'\"]{6,}['\"]",
             "Possible hardcoded password"
         ),
+
         (
             r"(?i)(secret[_-]?key)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
             "Possible secret key"
         ),
+
         (
             r"(?i)(access[_-]?token)\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}['\"]",
             "Possible access token"
         ),
+
         (
             r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----",
             "Private key detected"
         )
     ]
 
-    found = False
 
-    ignored_dirs = {
-        ".git",
-        "__pycache__",
-        "node_modules",
-        ".venv",
-        "venv",
-        "uploads",
-        "scanned_projects"
+    unquoted_patterns = [
+
+        (
+            r"(?im)^\s*(?:[\w.]*API[_-]?KEY)\s*=\s*\S{8,}\s*$",
+            "Possible API key in env file"
+        ),
+
+        (
+            r"(?im)^\s*(?:[\w.]*PASSWORD)\s*=\s*\S{4,}\s*$",
+            "Possible hardcoded password in env file"
+        ),
+
+        (
+            r"(?im)^\s*(?:[\w.]*SECRET[_-]?KEY)\s*=\s*\S{8,}\s*$",
+            "Possible secret key in env file"
+        ),
+
+        (
+            r"(?im)^\s*(?:[\w.]*ACCESS[_-]?TOKEN)\s*=\s*\S{8,}\s*$",
+            "Possible access token in env file"
+        ),
+
+        (
+            r"(?im)^\s*(?:[\w.]*JWT[_-]?SECRET)\s*=\s*\S{4,}\s*$",
+            "Possible JWT secret in env file"
+        )
+    ]
+
+
+    placeholder_values = {
+        "changeme",
+        "your_api_key_here",
+        "example",
+        "xxxx",
+        "placeholder",
+        "your_password_here",
+        "changeit",
+        "replace_me",
+        "todo"
     }
 
-    for root, dirs, files in os.walk(project_path):
+
+    found = False
+
+
+    for root, dirs, files in os.walk(
+        project_path
+    ):
 
         dirs[:] = [
             d for d in dirs
-            if d not in ignored_dirs
+            if d not in IGNORED_DIRS
         ]
+
 
         for filename in files:
 
-            if filename.lower() in {
-                ".env.example",
-                "readme.md"
-            }:
+            lower_name = filename.lower()
+
+
+            if lower_name == "readme.md":
                 continue
 
-            filepath = os.path.join(root, filename)
+
+            filepath = os.path.join(
+                root,
+                filename
+            )
+
+
+            is_example_file = (
+                lower_name.endswith(".example")
+                or ".example." in lower_name
+            )
+
 
             try:
 
-                if os.path.getsize(filepath) > 2 * 1024 * 1024:
+                if os.path.getsize(filepath) > (
+                    2 * 1024 * 1024
+                ):
                     continue
+
 
                 with open(
                     filepath,
@@ -344,11 +545,19 @@ def check_secrets(project_path, findings):
                     encoding="utf-8",
                     errors="ignore"
                 ) as f:
+
                     content = f.read()
 
-                for pattern, label in secret_patterns:
 
-                    if re.search(pattern, content):
+                matched_this_file = False
+
+
+                for pattern, label in quoted_patterns:
+
+                    if re.search(
+                        pattern,
+                        content
+                    ):
 
                         add_finding(
                             findings,
@@ -360,10 +569,67 @@ def check_secrets(project_path, findings):
                         )
 
                         found = True
+                        matched_this_file = True
+
                         break
 
+
+                if matched_this_file:
+                    continue
+
+
+                if is_example_file:
+                    continue
+
+
+                if (
+                    lower_name == ".env"
+                    or lower_name.startswith(".env.")
+                    or lower_name.endswith(".env")
+                ):
+
+                    for pattern, label in unquoted_patterns:
+
+                        match = re.search(
+                            pattern,
+                            content
+                        )
+
+                        if match:
+
+                            value = (
+                                match.group(0)
+                                .split("=", 1)[-1]
+                                .strip()
+                                .strip("'\"")
+                            )
+
+
+                            if (
+                                value.lower()
+                                in placeholder_values
+                            ):
+                                continue
+
+
+                            add_finding(
+                                findings,
+                                "Security",
+                                "Critical",
+                                f"{label} detected",
+                                "A committed .env file with real credentials can be exposed through version control or deployment artifacts.",
+                                "Remove real credentials from committed .env files; use .env.example with placeholder values instead, and load real secrets from a secure secret manager."
+                            )
+
+                            found = True
+
+                            break
+
+
             except Exception:
+
                 continue
+
 
     return not found
 
@@ -372,29 +638,37 @@ def check_secrets(project_path, findings):
 # DEBUG MODE CHECK
 # =========================================================
 
-def check_debug_mode(project_path, findings):
+def check_debug_mode(
+    project_path,
+    findings
+):
 
     debug_found = False
 
-    for root, dirs, files in os.walk(project_path):
+
+    for root, dirs, files in os.walk(
+        project_path
+    ):
 
         dirs[:] = [
             d for d in dirs
-            if d not in {
-                ".git",
-                "__pycache__",
-                "node_modules",
-                ".venv",
-                "venv"
-            }
+            if d not in IGNORED_DIRS
         ]
+
 
         for filename in files:
 
-            if not filename.endswith((".py", ".js", ".ts")):
+            if not filename.endswith(
+                (".py", ".js", ".ts")
+            ):
                 continue
 
-            filepath = os.path.join(root, filename)
+
+            filepath = os.path.join(
+                root,
+                filename
+            )
+
 
             try:
 
@@ -404,18 +678,28 @@ def check_debug_mode(project_path, findings):
                     encoding="utf-8",
                     errors="ignore"
                 ) as f:
+
                     content = f.read()
 
+
                 patterns = [
+
                     r"debug\s*=\s*True",
+
                     r"debug\s*=\s*true",
+
                     r"app\.run\(.*debug\s*=\s*True",
+
                     r"app\.run\(.*debug\s*=\s*true"
                 ]
 
+
                 for pattern in patterns:
 
-                    if re.search(pattern, content):
+                    if re.search(
+                        pattern,
+                        content
+                    ):
 
                         add_finding(
                             findings,
@@ -427,19 +711,194 @@ def check_debug_mode(project_path, findings):
                         )
 
                         debug_found = True
+
                         break
 
+
             except Exception:
+
                 continue
 
+
     return not debug_found
+
+
+# =========================================================
+# ERROR HANDLING / CONSOLE LOG CHECK
+# =========================================================
+
+def check_error_handling(
+    project_path,
+    findings
+):
+
+    issues_found = False
+
+    console_log_count = 0
+
+    files_with_routes_no_try_catch = 0
+
+    bare_except_count = 0
+
+
+    for root, dirs, files in os.walk(
+        project_path
+    ):
+
+        dirs[:] = [
+            d for d in dirs
+            if d not in IGNORED_DIRS
+        ]
+
+
+        for filename in files:
+
+            filepath = os.path.join(
+                root,
+                filename
+            )
+
+
+            # JavaScript / TypeScript
+            if filename.endswith(
+                (".js", ".ts")
+            ):
+
+                try:
+
+                    with open(
+                        filepath,
+                        "r",
+                        encoding="utf-8",
+                        errors="ignore"
+                    ) as f:
+
+                        content = f.read()
+
+                except Exception:
+
+                    continue
+
+
+                console_log_count += len(
+                    re.findall(
+                        r"console\.log\(",
+                        content
+                    )
+                )
+
+
+                looks_like_route = bool(
+                    re.search(
+                        r"\.(get|post|put|delete|patch)\s*\(",
+                        content
+                    )
+                )
+
+
+                has_try_catch = (
+                    "try" in content
+                    and "catch" in content
+                )
+
+
+                has_error_middleware = bool(
+                    re.search(
+                        r"\(err,\s*req,\s*res",
+                        content
+                    )
+                )
+
+
+                if (
+                    looks_like_route
+                    and not has_try_catch
+                    and not has_error_middleware
+                ):
+
+                    files_with_routes_no_try_catch += 1
+
+
+            # Python
+            elif filename.endswith(".py"):
+
+                try:
+
+                    with open(
+                        filepath,
+                        "r",
+                        encoding="utf-8",
+                        errors="ignore"
+                    ) as f:
+
+                        content = f.read()
+
+                except Exception:
+
+                    continue
+
+
+                bare_except_count += len(
+                    re.findall(
+                        r"(?m)^\s*except\s*:\s*$",
+                        content
+                    )
+                )
+
+
+    if files_with_routes_no_try_catch > 0:
+
+        add_finding(
+            findings,
+            "Security",
+            "Medium",
+            "Routes without visible error handling",
+            "Unhandled errors in request handlers can crash the process or leak stack traces to clients in production.",
+            "Wrap route logic in try/catch or use centralized error-handling middleware and return sanitized error responses."
+        )
+
+        issues_found = True
+
+
+    if console_log_count >= 3:
+
+        add_finding(
+            findings,
+            "Project Structure",
+            "Low",
+            "Frequent use of console.log for output",
+            "console.log statements left in production code can leak internal data and clutter logs.",
+            "Use a configurable logging library and remove or gate debug console.log statements before deployment."
+        )
+
+        issues_found = True
+
+
+    if bare_except_count > 0:
+
+        add_finding(
+            findings,
+            "Security",
+            "Medium",
+            "Bare except blocks detected",
+            "Bare 'except:' clauses silently swallow all errors, including ones that should stop deployment or alert developers.",
+            "Catch specific exceptions and log or handle them explicitly instead of using a bare except."
+        )
+
+        issues_found = True
+
+
+    return not issues_found
 
 
 # =========================================================
 # TEST DETECTION
 # =========================================================
 
-def check_tests(project_path, findings):
+def check_tests(
+    project_path,
+    findings
+):
 
     test_found = False
 
@@ -449,31 +908,36 @@ def check_tests(project_path, findings):
         "__tests__"
     }
 
-    for root, dirs, files in os.walk(project_path):
+
+    for root, dirs, files in os.walk(
+        project_path
+    ):
 
         dirs[:] = [
             d for d in dirs
-            if d not in {
-                ".git",
-                "__pycache__",
-                "node_modules",
-                ".venv",
-                "venv"
-            }
+            if d not in IGNORED_DIRS
         ]
+
 
         current_dirs = {
             d.lower()
             for d in dirs
         }
 
-        if current_dirs.intersection(test_directories):
+
+        if current_dirs.intersection(
+            test_directories
+        ):
+
             test_found = True
+
             break
+
 
         for file in files:
 
             filename = file.lower()
+
 
             if (
                 filename.startswith("test_")
@@ -482,11 +946,15 @@ def check_tests(project_path, findings):
                 or filename.endswith(".spec.js")
                 or filename.endswith(".test.ts")
             ):
+
                 test_found = True
+
                 break
+
 
         if test_found:
             break
+
 
     if not test_found:
 
@@ -499,6 +967,7 @@ def check_tests(project_path, findings):
             "Add automated tests and run them before deploying the application."
         )
 
+
     return test_found
 
 
@@ -506,12 +975,20 @@ def check_tests(project_path, findings):
 # DOCKER CHECK
 # =========================================================
 
-def check_docker(project_path, findings):
+def check_docker(
+    project_path,
+    findings
+):
 
-    dockerfile = find_file(project_path, "Dockerfile")
+    dockerfile = find_file(
+        project_path,
+        "Dockerfile"
+    )
+
 
     if dockerfile:
         return True
+
 
     add_finding(
         findings,
@@ -522,6 +999,7 @@ def check_docker(project_path, findings):
         "A Dockerfile can be added if consistent container-based deployment is required."
     )
 
+
     return False
 
 
@@ -529,40 +1007,66 @@ def check_docker(project_path, findings):
 # CATEGORY SCORE
 # =========================================================
 
-def calculate_category_scores(findings, checks):
+def calculate_category_scores(
+    findings,
+    checks
+):
 
     categories = {
+
         "Security": 100,
+
         "Configuration": 100,
+
         "Dependencies": 100,
+
         "Project Structure": 100,
+
         "Testing": 100,
+
         "Deployment": 100
     }
 
+
+    # Penalty for each severity
     penalties = {
-        "Critical": 35,
+
+        "Critical": 30,
+
         "High": 20,
+
         "Medium": 10,
+
         "Low": 5
     }
+
 
     for finding in findings:
 
         category = finding["category"]
+
         severity = finding["severity"]
 
+
         if category in categories:
+
             categories[category] -= penalties.get(
                 severity,
                 0
             )
 
+
+    # Keep scores between 0 and 100
     for category in categories:
+
         categories[category] = max(
             0,
-            min(100, categories[category])
+            min(
+                100,
+                categories[category]
+            )
         )
+
 
     return categories
 
@@ -571,90 +1075,185 @@ def calculate_category_scores(findings, checks):
 # OVERALL SCORE
 # =========================================================
 
-def calculate_overall_score(category_scores):
+def calculate_overall_score(
+    category_scores
+):
 
+    # Security has the highest importance.
     weights = {
-        "Security": 0.25,
+
+        "Security": 0.35,
+
         "Configuration": 0.15,
-        "Dependencies": 0.15,
-        "Project Structure": 0.15,
+
+        "Dependencies": 0.10,
+
+        "Project Structure": 0.10,
+
         "Testing": 0.15,
+
         "Deployment": 0.15
     }
 
+
     score = sum(
+
         category_scores[category] * weight
-        for category, weight in weights.items()
+
+        for category, weight
+        in weights.items()
     )
 
+
     return round(score)
+
+
+# =========================================================
+# READINESS STATUS
+# =========================================================
+
+def get_readiness_status(
+    score
+):
+
+    if score >= 90:
+
+        return "Excellent"
+
+    elif score >= 75:
+
+        return "Good"
+
+    elif score >= 50:
+
+        return "Needs Improvement"
+
+    else:
+
+        return "Not Deployment Ready"
 
 
 # =========================================================
 # SCAN PROJECT
 # =========================================================
 
-def scan_project(project_path):
+def scan_project(
+    project_path
+):
 
     findings = []
+
+
+    # Run all checks
 
     readme = check_readme(
         project_path,
         findings
     )
 
+
     dependencies = check_dependencies(
         project_path,
         findings
     )
+
 
     environment = check_environment(
         project_path,
         findings
     )
 
+
+    gitignore = check_gitignore(
+        project_path,
+        findings
+    )
+
+
     secrets = check_secrets(
         project_path,
         findings
     )
+
 
     debug = check_debug_mode(
         project_path,
         findings
     )
 
+
+    error_handling = check_error_handling(
+        project_path,
+        findings
+    )
+
+
     tests = check_tests(
         project_path,
         findings
     )
+
 
     docker = check_docker(
         project_path,
         findings
     )
 
+
+    # Detect project type
+
     project_types = detect_project_type(
         project_path
     )
 
+
+    # Store check results
+
     checks = {
+
         "readme": readme,
+
         "dependencies": dependencies,
+
         "environment": environment,
+
+        "gitignore": gitignore,
+
         "secrets": secrets,
+
         "debug": debug,
+
+        "error_handling": error_handling,
+
         "tests": tests,
+
         "docker": docker
     }
+
+
+    # Calculate category scores
 
     category_scores = calculate_category_scores(
         findings,
         checks
     )
 
+
+    # Calculate overall score
+
     overall_score = calculate_overall_score(
         category_scores
     )
+
+
+    # Calculate readiness
+
+    readiness = get_readiness_status(
+        overall_score
+    )
+
+
+    # Count findings
 
     critical = sum(
         1
@@ -662,11 +1261,13 @@ def scan_project(project_path):
         if f["severity"] == "Critical"
     )
 
+
     high = sum(
         1
         for f in findings
         if f["severity"] == "High"
     )
+
 
     medium = sum(
         1
@@ -674,22 +1275,39 @@ def scan_project(project_path):
         if f["severity"] == "Medium"
     )
 
+
     low = sum(
         1
         for f in findings
         if f["severity"] == "Low"
     )
 
+
+    # Return complete result
+
     return {
+
         "score": overall_score,
+
+        "readiness": readiness,
+
         "project_type": project_types,
+
         "categories": category_scores,
+
         "findings": findings,
+
         "summary": {
+
             "critical": critical,
+
             "high": high,
+
             "medium": medium,
-            "low": low
+
+            "low": low,
+
+            "total": len(findings)
         }
     }
 
@@ -698,8 +1316,13 @@ def scan_project(project_path):
 # UPLOAD + SCAN
 # =========================================================
 
-@app.route("/scan", methods=["POST"])
+@app.route(
+    "/scan",
+    methods=["POST"]
+)
 def scan():
+
+    # Check uploaded file
 
     if "project" not in request.files:
 
@@ -708,7 +1331,11 @@ def scan():
             "error": "No project file uploaded."
         }), 400
 
+
     file = request.files["project"]
+
+
+    # Empty filename
 
     if file.filename == "":
 
@@ -717,23 +1344,47 @@ def scan():
             "error": "Please select a ZIP file."
         }), 400
 
-    if not file.filename.lower().endswith(".zip"):
+
+    # ZIP validation
+
+    if not file.filename.lower().endswith(
+        ".zip"
+    ):
 
         return jsonify({
             "success": False,
             "error": "Only ZIP files are supported."
         }), 400
 
-    # Clean previous scan
-    shutil.rmtree(EXTRACT_FOLDER, ignore_errors=True)
-    os.makedirs(EXTRACT_FOLDER, exist_ok=True)
+
+    # Clear previous extracted project
+
+    shutil.rmtree(
+        EXTRACT_FOLDER,
+        ignore_errors=True
+    )
+
+
+    os.makedirs(
+        EXTRACT_FOLDER,
+        exist_ok=True
+    )
+
+
+    # Save uploaded ZIP
 
     upload_path = os.path.join(
         UPLOAD_FOLDER,
         file.filename
     )
 
-    file.save(upload_path)
+
+    file.save(
+        upload_path
+    )
+
+
+    # Extract ZIP
 
     try:
 
@@ -746,6 +1397,7 @@ def scan():
                 EXTRACT_FOLDER
             )
 
+
     except zipfile.BadZipFile:
 
         return jsonify({
@@ -753,12 +1405,24 @@ def scan():
             "error": "Invalid ZIP file."
         }), 400
 
-    # Handle ZIP containing one root folder
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": f"Unable to extract ZIP file: {str(e)}"
+        }), 500
+
+
+    # Determine project root
+
     scan_root = EXTRACT_FOLDER
+
 
     items = os.listdir(
         EXTRACT_FOLDER
     )
+
 
     if len(items) == 1:
 
@@ -767,17 +1431,41 @@ def scan():
             items[0]
         )
 
-        if os.path.isdir(single_path):
+
+        if os.path.isdir(
+            single_path
+        ):
+
             scan_root = single_path
 
-    result = scan_project(
-        scan_root
-    )
 
-    return jsonify({
-        "success": True,
-        "result": result
-    })
+    # Scan project
+
+    try:
+
+        result = scan_project(
+            scan_root
+        )
+
+
+        return jsonify({
+
+            "success": True,
+
+            "result": result
+
+        })
+
+
+    except Exception as e:
+
+        return jsonify({
+
+            "success": False,
+
+            "error": f"Project analysis failed: {str(e)}"
+
+        }), 500
 
 
 # =========================================================
@@ -787,8 +1475,11 @@ def scan():
 if __name__ == "__main__":
 
     app.run(
+
         debug=True,
+
         host="0.0.0.0",
+
         port=int(
             os.environ.get(
                 "PORT",
