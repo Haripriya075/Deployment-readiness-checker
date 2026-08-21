@@ -24,8 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const errorBox =
         document.getElementById("errorBox");
 
-    const themeToggle =
-        document.getElementById("themeToggle");
+
 
 
     /* =====================================================
@@ -883,30 +882,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-    /* =====================================================
-       THEME
-    ====================================================== */
-
-    themeToggle.addEventListener(
-        "click",
-        () => {
-
-            document.body.classList.toggle(
-                "dark"
-            );
-
-
-            const dark =
-                document.body.classList.contains(
-                    "dark"
-                );
-
-
-            themeToggle.textContent =
-                dark
-                    ? "Light Mode"
-                    : "Dark Mode";
-        }
-    );
-
 });
+    
