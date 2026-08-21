@@ -47,6 +47,7 @@ def home():
 def detect_project_type(project_path):
 
     files = []
+    extensions = set()
 
     for root, dirs, filenames in os.walk(project_path):
 
@@ -56,75 +57,179 @@ def detect_project_type(project_path):
         ]
 
         for filename in filenames:
-            files.append(filename.lower())
+
+            lower_name = filename.lower()
+
+            files.append(lower_name)
+
+            if "." in lower_name:
+                extensions.add(
+                    "." + lower_name.rsplit(".", 1)[-1]
+                )
+
 
     detected = []
 
-    # Python
-    if "requirements.txt" in files:
+
+    # =====================================================
+    # PYTHON
+    # =====================================================
+
+    if (
+        "requirements.txt" in files
+        or "pyproject.toml" in files
+        or "setup.py" in files
+        or ".py" in extensions
+    ):
         detected.append("Python")
 
-    # Node.js
-    if "package.json" in files:
+
+    # =====================================================
+    # NODE.JS
+    # =====================================================
+
+    if (
+        "package.json" in files
+        or "package-lock.json" in files
+        or "yarn.lock" in files
+        or "pnpm-lock.yaml" in files
+        or ".js" in extensions
+        or ".ts" in extensions
+    ):
         detected.append("Node.js")
 
-    # Django
-    if "manage.py" in files:
-        detected.append("Django")
 
-    # Docker
-    if "dockerfile" in files:
-        detected.append("Docker")
+    # =====================================================
+    # JAVA
+    # =====================================================
 
-    # Flask / FastAPI
-    for root, dirs, filenames in os.walk(project_path):
+    if (
+        "pom.xml" in files
+        or "build.gradle" in files
+        or "build.gradle.kts" in files
+        or ".java" in extensions
+    ):
+        detected.append("Java")
 
-        dirs[:] = [
-            d for d in dirs
-            if d not in IGNORED_DIRS
-        ]
 
-        for filename in filenames:
+    # =====================================================
+    # C / C++
+    # =====================================================
 
-            if not filename.endswith(".py"):
-                continue
+    if (
+        ".c" in extensions
+        or ".cpp" in extensions
+        or ".cc" in extensions
+        or ".cxx" in extensions
+        or ".h" in extensions
+        or ".hpp" in extensions
+        or "cmakelists.txt" in files
+    ):
+        detected.append("C/C++")
 
-            try:
 
-                filepath = os.path.join(
-                    root,
-                    filename
-                )
+    # =====================================================
+    # C#
+    # =====================================================
 
-                with open(
-                    filepath,
-                    "r",
-                    encoding="utf-8",
-                    errors="ignore"
-                ) as f:
+    if (
+        ".cs" in extensions
+        or ".csproj" in extensions
+        or ".sln" in extensions
+    ):
+        detected.append("C# / .NET")
 
-                    content = f.read()
 
-                if (
-                    "from flask" in content
-                    or "import flask" in content
-                ):
-                    detected.append("Flask")
+    # =====================================================
+    # PHP
+    # =====================================================
 
-                if (
-                    "from fastapi" in content
-                    or "import fastapi" in content
-                ):
-                    detected.append("FastAPI")
+    if (
+        "composer.json" in files
+        or ".php" in extensions
+    ):
+        detected.append("PHP")
 
-            except Exception:
-                pass
 
-    # Frontend frameworks
+    # =====================================================
+    # GO
+    # =====================================================
+
+    if (
+        "go.mod" in files
+        or "go.sum" in files
+        or ".go" in extensions
+    ):
+        detected.append("Go")
+
+
+    # =====================================================
+    # RUBY
+    # =====================================================
+
+    if (
+        "gemfile" in files
+        or "rakefile" in files
+        or ".rb" in extensions
+    ):
+        detected.append("Ruby")
+
+
+    # =====================================================
+    # RUST
+    # =====================================================
+
+    if (
+        "cargo.toml" in files
+        or "cargo.lock" in files
+        or ".rs" in extensions
+    ):
+        detected.append("Rust")
+
+
+    # =====================================================
+    # KOTLIN
+    # =====================================================
+
+    if (
+        "build.gradle.kts" in files
+        or ".kt" in extensions
+        or ".kts" in extensions
+    ):
+        detected.append("Kotlin")
+
+
+    # =====================================================
+    # SWIFT
+    # =====================================================
+
+    if (
+        "package.swift" in files
+        or ".swift" in extensions
+    ):
+        detected.append("Swift")
+
+
+    # =====================================================
+    # ANDROID
+    # =====================================================
+
+    if (
+        "androidmanifest.xml" in files
+        or "gradlew" in files
+    ):
+        detected.append("Android")
+
+
+    # =====================================================
+    # FRONTEND FRAMEWORKS
+    # =====================================================
+
     package_path = find_file(
         project_path,
         "package.json"
     )
+
 
     if package_path:
 
@@ -139,27 +244,127 @@ def detect_project_type(project_path):
 
                 content = f.read().lower()
 
+
             if '"react"' in content:
                 detected.append("React")
+
 
             if '"vue"' in content:
                 detected.append("Vue")
 
+
             if '"angular"' in content:
                 detected.append("Angular")
+
 
             if '"next"' in content:
                 detected.append("Next.js")
 
+
+            if '"express"' in content:
+                detected.append("Express.js")
+
+
         except Exception:
             pass
 
-    if not detected:
-        return ["Unknown"]
 
-    return list(
+    # =====================================================
+    # DJANGO
+    # =====================================================
+
+    if "manage.py" in files:
+        detected.append("Django")
+
+
+    # =====================================================
+    # FLASK / FASTAPI
+    # =====================================================
+
+    for root, dirs, filenames in os.walk(project_path):
+
+        dirs[:] = [
+            d for d in dirs
+            if d not in IGNORED_DIRS
+        ]
+
+
+        for filename in filenames:
+
+            if not filename.lower().endswith(".py"):
+                continue
+
+
+            filepath = os.path.join(
+                root,
+                filename
+            )
+
+
+            try:
+
+                with open(
+                    filepath,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore"
+                ) as f:
+
+                    content = f.read()
+
+
+                if (
+                    "from flask" in content
+                    or "import flask" in content
+                ):
+                    detected.append("Flask")
+
+
+                if (
+                    "from fastapi" in content
+                    or "import fastapi" in content
+                ):
+                    detected.append("FastAPI")
+
+
+            except Exception:
+                pass
+
+
+    # =====================================================
+    # DOCKER
+    # =====================================================
+
+    if (
+        "dockerfile" in files
+        or "docker-compose.yml" in files
+        or "docker-compose.yaml" in files
+    ):
+        detected.append("Docker")
+
+
+    # =====================================================
+    # REMOVE DUPLICATES
+    # =====================================================
+
+    detected = list(
         dict.fromkeys(detected)
     )
+
+
+    # =====================================================
+    # FALLBACK
+    # =====================================================
+
+    if not detected:
+
+        if files:
+            return ["General Project"]
+
+        return ["Empty Project"]
+
+
+    return detected
 
 
 # =========================================================
