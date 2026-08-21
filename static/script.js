@@ -177,15 +177,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        /* 50 MB client-side validation */
+        /* 100 MB client-side validation */
 
         const maxSize =
-            50 * 1024 * 1024;
+            100 * 1024 * 1024;
 
         if (file.size > maxSize) {
 
             showError(
-                "ZIP file must be smaller than 50 MB."
+                "ZIP file must be smaller than 100 MB."
             );
 
             scanButton.disabled = true;
