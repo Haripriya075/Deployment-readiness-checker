@@ -2,23 +2,66 @@
 
 A Flask-based web application that analyzes a project before deployment and identifies common **security, configuration, dependency, testing, project-structure, and deployment-readiness issues**.
 
-DeployCheck provides a readiness score, category-wise analysis, severity levels, and actionable recommendations to help developers identify potential problems before deploying an application.
+DeployCheck provides a **Deployment Readiness Score**, category-wise analysis, severity levels, detected issues, impact descriptions, and actionable recommendations to help developers identify potential problems before deploying an application.
 
-<img width="1303" height="406" alt="image" src="https://github.com/user-attachments/assets/6324dd1b-86d2-41fe-8537-6c09b87054c9" />
+---
+
+## Demo Video
 
 
+
+https://github.com/user-attachments/assets/f2d4a526-27ac-4c1c-a7a1-d774d8f31333
+
+
+
+> The demo video demonstrates the complete workflow of uploading a project, scanning the project, detecting deployment-readiness issues, calculating the readiness score, and displaying recommendations.
 
 ---
 
 ## Live Demo
 
-DeployCheck is deployed as a web application and can be accessed through the Render deployment URL.
+DeployCheck is deployed as a web application using **Render**.
 
-**Live Application:** 
-
-
+**Live Application:**
+https://deploycheck-5ro6.onrender.com
 
 ---
+
+## Screenshots
+
+The following section is reserved for screenshots of the DeployCheck application.
+
+### 1. Home Page
+
+<img width="1314" height="622" alt="image" src="https://github.com/user-attachments/assets/cec4c5c4-6e4d-48f0-8f74-dd3ff9d6dac7" />
+
+
+<br>
+
+The home page allows users to upload a project ZIP file and begin the deployment-readiness analysis.
+
+---
+
+### 2. Project Upload and Scanning
+
+<img width="1268" height="486" alt="image" src="https://github.com/user-attachments/assets/a18287e0-f02f-4e52-b680-303825ec9594" />
+
+
+<br>
+
+The uploaded ZIP project is extracted and analyzed against multiple deployment-readiness checks.
+
+---
+
+### 3. Deployment Readiness Report
+
+<img width="1317" height="572" alt="image" src="https://github.com/user-attachments/assets/7f0bc36f-3e33-473d-8ef6-e339fec933ee" />
+
+
+The generated report displays the overall readiness score, detected technologies, category results, severity levels, impacts, and recommendations.
+
+---
+
 
 ## Features
 
@@ -26,7 +69,7 @@ DeployCheck is deployed as a web application and can be accessed through the Ren
 * Extract and scan project files
 * Detect project type and frameworks
 * Generate a **Deployment Readiness Score /100**
-* Provide category-wise readiness scores
+* Provide category-wise readiness analysis
 * Check project documentation
 * Check dependency configuration
 * Check environment configuration
@@ -34,8 +77,11 @@ DeployCheck is deployed as a web application and can be accessed through the Ren
 * Detect debug mode configuration
 * Check for automated tests
 * Detect Dockerfile configuration
+* Analyze deployment-related configuration
 * Assign severity levels to findings
-* Provide impact and recommendations
+* Display issue impact
+* Provide actionable recommendations
+* Display detected technologies
 * Support light and dark mode
 * Display an interactive deployment-readiness report
 
@@ -43,23 +89,22 @@ DeployCheck is deployed as a web application and can be accessed through the Ren
 
 ## Deployment Readiness Analysis
 
-After scanning a project, DeployCheck generates an overall readiness score.
+After scanning a project, DeployCheck generates an overall readiness score out of **100**.
 
-Example:
+### Example
 
 ```text
-Deployment Readiness: 90/100
+Deployment Readiness: 70/100
 
-Security             80/100
-Configuration        95/100
+Security             30/100
+Configuration        80/100
 Dependencies         100/100
-Project Structure    90/100
+Project Structure    100/100
 Testing              90/100
 Deployment           95/100
 ```
 
-<img width="1327" height="549" alt="image" src="https://github.com/user-attachments/assets/4c38e529-bcb2-4c63-9353-69bc0c1f0add" />
-
+The category-wise analysis helps developers identify which areas of a project require attention before deployment.
 
 ---
 
@@ -75,57 +120,55 @@ DeployCheck categorizes detected issues according to their potential impact.
 | Low      | Minor improvement or optional enhancement |
 | Passed   | Check completed successfully              |
 
-Example finding:
+### Example Finding
 
-```text
-HIGH — Debug mode appears to be enabled
+---<img width="1303" height="613" alt="image" src="https://github.com/user-attachments/assets/adf62cd8-2f74-4ad1-84e3-5fe42e759190" />
 
-Impact:
-Debug mode can expose application details in production.
-
-Recommendation:
-Disable debug mode before production deployment.
-```
-
-<img width="1280" height="595" alt="image" src="https://github.com/user-attachments/assets/bd70a74c-3426-416b-b67b-cad363a5b96d" />
-
-<img width="1248" height="546" alt="image" src="https://github.com/user-attachments/assets/cfa5d554-3cde-473c-b870-21760e972ade" />
-
----
 
 ## How It Works
 
 ### 1. Upload Project
 
-The user uploads the application as a ZIP file.
-
-<img width="1334" height="615" alt="image" src="https://github.com/user-attachments/assets/d7128f04-cd9e-4489-a2dc-c6c2c91c394f" />
-
+The user uploads the application as a ZIP archive through the DeployCheck interface.
 
 ### 2. Extract Project
 
 DeployCheck extracts the ZIP file and identifies the project structure.
 
-### 3. Analyze Project
+### 3. Detect Project Type
 
-The scanner examines files and configurations for common deployment-readiness issues.
+The application examines project files and configuration files to identify commonly used technologies and frameworks.
+
+### 4. Analyze Project
+
+The scanner examines the project for common deployment-readiness issues related to:
+
+* Project structure
+* Documentation
+* Dependencies
+* Environment configuration
+* Security
+* Debug configuration
+* Testing
+* Deployment configuration
 
 ### 4. Calculate Readiness Score
 
-The application evaluates different categories and generates an overall score out of 100.
+The application evaluates the results of the implemented checks and generates an overall score out of 100.
 
 ### 5. Display Findings
 
 Detected issues are presented with:
 
-* Severity
 * Category
+* Severity
+* Issue description
 * Impact
 * Recommendation
 
 ### 6. Review Recommendations
 
-Developers can use the recommendations to fix potential problems before attempting deployment.
+Developers can use the recommendations to identify and fix potential problems before attempting deployment.
 
 ---
 
@@ -133,64 +176,99 @@ Developers can use the recommendations to fix potential problems before attempti
 
 ### Project Structure
 
-DeployCheck checks for important project files such as:
+DeployCheck checks for important project files and configurations, including:
 
 * `README.md`
 * Project configuration files
 * Dependency files
 * Test files
-* Dockerfile
+* `Dockerfile`
+
+This helps determine whether the project contains important files required for development and deployment.
+
+---
 
 ### Dependency Configuration
 
-The application checks whether dependency manifests such as:
+The application checks whether dependency manifests are available.
+
+Examples include:
 
 ```text
 requirements.txt
 package.json
 ```
 
-are present.
+Proper dependency configuration helps ensure that required packages can be installed in the deployment environment.
+
+---
 
 ### Environment Configuration
 
-DeployCheck checks for environment configuration and identifies situations where an `.env` file may be present without a corresponding `.env.example`.
+DeployCheck checks environment-related configuration.
+
+It can identify situations where an `.env` file may exist without an appropriate `.env.example` template.
+
+Environment variables should generally be managed separately from source code so that sensitive configuration is not directly exposed.
+
+---
 
 ### Security
 
-The scanner looks for potential hardcoded sensitive information, including patterns resembling:
+DeployCheck performs rule-based scanning for potential hardcoded sensitive information.
+
+Examples include patterns resembling:
 
 * API keys
 * Passwords
 * Secret keys
 * Access tokens
 * Private keys
+* Credential-like values
 
-Detected values should be moved to environment variables or a secure secret-management system.
+Detected sensitive values should be moved to environment variables or an appropriate secure secret-management system.
+
+> DeployCheck provides an initial rule-based security check and is not intended to replace dedicated security scanners or professional security testing.
+
+---
 
 ### Debug Configuration
 
-The application checks source files for configurations such as:
+The application checks source files for development/debug configurations such as:
 
 ```python
 debug=True
 ```
 
-Debug mode should normally be disabled for production deployments.
+Debug mode should normally be disabled for production deployments because it can expose application information and debugging details.
+
+---
 
 ### Testing
 
 DeployCheck checks whether common automated test files or test directories are present.
 
+The presence of tests can provide an indication that the project has automated validation before deployment.
+
+---
+
 ### Deployment
 
-The application checks for deployment-related configuration such as a `Dockerfile`.
+The application checks for deployment-related configuration such as:
+
+```text
+Dockerfile
+```
+
+Deployment configuration can vary depending on the hosting platform and project type.
 
 ---
 
 ## Project Type Detection
 
-DeployCheck can identify common technologies and frameworks, including:
+DeployCheck can identify common technologies and frameworks based on project files and configuration.
+
+Supported examples include:
 
 * Python
 * Flask
@@ -207,18 +285,69 @@ Framework-specific checks can be expanded in future versions.
 
 ---
 
+## Deployment Readiness Report
+
+After scanning a project, DeployCheck generates an interactive report containing:
+
+* Overall readiness score
+* Overall deployment status
+* Number of files scanned
+* Detected technologies
+* Category-wise findings
+* Severity levels
+* Issue descriptions
+* Impact information
+* Recommended fixes
+
+The report allows developers to quickly identify potential deployment problems.
+
+---
+
+## Application Workflow
+
+```text
+        Upload ZIP Project
+                │
+                ▼
+        Extract Project
+                │
+                ▼
+       Detect Project Type
+                │
+                ▼
+         Scan Project Files
+                │
+                ▼
+      Run Deployment Checks
+                │
+                ▼
+       Calculate Score /100
+                │
+                ▼
+      Classify Findings
+                │
+                ▼
+    Generate Recommendations
+                │
+                ▼
+    Deployment Readiness Report
+```
+
+---
+
 ## Technology Stack
 
-| Technology     | Purpose                         |
-| -------------- | ------------------------------- |
-| Python         | Backend programming             |
-| Flask          | Web application framework       |
-| HTML           | Application structure           |
-| CSS            | User interface styling          |
-| JavaScript     | Frontend interaction            |
-| ZIP Processing | Project extraction and scanning |
-| Gunicorn       | Production application server   |
-| Render         | Cloud deployment                |
+| Technology          | Purpose                                   |
+| ------------------- | ----------------------------------------- |
+| Python              | Backend programming and scanning logic    |
+| Flask               | Web application framework                 |
+| HTML                | Application structure                     |
+| CSS                 | User interface styling                    |
+| JavaScript          | Frontend interaction and report rendering |
+| Regular Expressions | Rule-based secret detection               |
+| ZIP Processing      | Project extraction and scanning           |
+| Gunicorn            | Production application server             |
+| Render              | Cloud deployment                          |
 
 ---
 
@@ -229,6 +358,7 @@ DeployCheck/
 │
 ├── app.py
 ├── requirements.txt
+├── README.md
 ├── .gitignore
 │
 ├── templates/
@@ -247,31 +377,37 @@ DeployCheck/
 
 ## Installation
 
-### 1. Clone the repository
+### Prerequisites
+
+Make sure Python is installed on your system.
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Haripriya075/Deployment-readiness-checker.git
 ```
 
-### 2. Open the project directory
+### 2. Open the Project Directory
 
 ```bash
 cd Deployment-readiness-checker
 ```
 
-### 3. Install dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run the application
+### 4. Run the Application
 
 ```bash
 python app.py
 ```
 
-### 5. Open the application
+### 5. Open the Application
+
+Open the following URL in your browser:
 
 ```text
 http://127.0.0.1:5000
@@ -281,16 +417,23 @@ http://127.0.0.1:5000
 
 ## Deployment
 
-DeployCheck is configured for deployment as a Flask web service.
+DeployCheck is configured as a Flask web application and can be deployed as a Python web service.
 
-Production startup command:
+### Production Server
+
+Gunicorn is used as the production WSGI server.
 
 ```bash
 gunicorn app:app
 ```
 
-The application can be deployed using platforms such as Render.
+### Deployment Platform
 
+The application is deployed using **Render**.
+
+**Live Application:**
+
+https://deploycheck-5ro6.onrender.com
 
 ---
 
@@ -303,11 +446,15 @@ It helps developers identify common issues before attempting to deploy an applic
 ```text
 Project
    ↓
-Configuration
+Project Structure
    ↓
 Dependencies
    ↓
+Environment Configuration
+   ↓
 Security
+   ↓
+Debug Configuration
    ↓
 Testing
    ↓
@@ -318,31 +465,86 @@ Readiness Score
 Recommendations
 ```
 
-The tool does **not guarantee successful deployment**. It identifies potential issues that should be reviewed before deployment.
+The tool provides an automated assessment of common deployment-readiness factors.
+
+> DeployCheck does not guarantee successful deployment. It identifies potential issues that should be reviewed and resolved before deployment.
+
+---
+
+## Security Considerations
+
+DeployCheck includes rule-based checks for potential security and configuration problems.
+
+These checks are intended to provide an initial assessment before deployment.
+
+Developers should perform additional security reviews and testing before deploying an application to production.
+
+DeployCheck should not be considered a replacement for:
+
+* Dedicated vulnerability scanners
+* Secret-scanning tools
+* Penetration testing
+* Code security reviews
+* Platform-specific security checks
+
+---
+
+## Limitations
+
+* The readiness analysis is based on predefined rule-based checks.
+* Secret detection may produce false positives or false negatives.
+* The readiness score represents the implemented checks and does not guarantee production readiness.
+* Different frameworks and deployment platforms may have different requirements.
+* The tool does not perform complete application vulnerability analysis.
+* The tool does not guarantee successful deployment.
+* Additional manual testing may be required before production deployment.
 
 ---
 
 ## Future Improvements
 
-Planned enhancements include:
+Potential future improvements include:
 
 * GitHub repository scanning
 * Dependency vulnerability checking
 * CVE/OSV-based vulnerability analysis
-* Platform-specific checks for Render, Vercel, AWS and Azure
+* Platform-specific checks for Render, Vercel, AWS, and Azure
 * Advanced Dockerfile analysis
-* CI/CD integration
+* CI/CD configuration analysis
+* CI/CD pipeline integration
 * Downloadable PDF reports
 * Historical deployment-readiness reports
 * Automated remediation suggestions
 * Additional programming-language support
+* More framework-specific deployment checks
+
+---
+
+## Live Application
+
+**DeployCheck:**
+https://deploycheck-5ro6.onrender.com
+
+<br>
+
+---
+
+## Repository
+
+**GitHub Repository:**
+https://github.com/Haripriya075/Deployment-readiness-checker
 
 ---
 
 ## Author
 
-**Haripriya075**
+**Haripriya**
 
 GitHub:
+https://github.com/Haripriya075/
 
-https://github.com/Haripriya075/Deployment-readiness-checker
+---
+
+## License
+
+This project is intended for educational, demonstration, and portfolio purposes.
